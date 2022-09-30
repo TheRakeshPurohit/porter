@@ -34,9 +34,7 @@ type ReconcileOptions struct {
 // to an installation. For uninstall or invoke, you should call those directly.
 func (p *Porter) ReconcileInstallation(ctx context.Context, opts ReconcileOptions) error {
 	ctx, log := tracing.StartSpan(ctx)
-	if p.Debug {
-		fmt.Fprintf(p.Err, "Reconciling %s/%s installation\n", opts.Namespace, opts.Name)
-	}
+	log.Debugf("Reconciling %s/%s installation", opts.Namespace, opts.Name)
 
 	// Get the last run of the installation, if available
 	var lastRun *storage.Run
@@ -51,11 +49,11 @@ func (p *Porter) ReconcileInstallation(ctx context.Context, opts ReconcileOption
 
 	ref, ok, err := opts.Installation.Bundle.GetBundleReference()
 	if err != nil {
-		return err
+		return log.Error(err)
 	}
 	if !ok {
 		instYaml, _ := yaml.Marshal(opts.Installation)
-		return fmt.Errorf("the installation does not define a valid bundle reference.\n%s", instYaml)
+		return log.Error(fmt.Errorf("the installation does not define a valid bundle reference.\n%s", instYaml))
 	}
 
 	// Configure the bundle action that we should execute IF IT'S OUT OF SYNC
@@ -80,7 +78,7 @@ func (p *Porter) ReconcileInstallation(ctx context.Context, opts ReconcileOption
 	lifecycleOpts.Params = make([]string, 0, len(opts.Installation.Parameters.Parameters))
 
 	// Write out the parameters as string values. Not efficient but reusing ExecuteAction would need more refactoring otherwise
-	_, err = p.resolveBundleReference(ctx, lifecycleOpts)
+	_, err = p.resolveBundleReference(ctx, lifecycleOpts.BundleReferenceOptions)
 	if err != nil {
 		return err
 	}
@@ -107,9 +105,9 @@ func (p *Porter) ReconcileInstallation(ctx context.Context, opts ReconcileOption
 
 	if inSync {
 		if opts.Force {
-			fmt.Fprintln(p.Out, "The installation is up-to-date but will be re-applied because --force was specified")
+			log.Info("The installation is up-to-date but will be re-applied because --force was specified")
 		} else {
-			fmt.Fprintln(p.Out, "The installation is already up-to-date.")
+			log.Info("The installation is already up-to-date.")
 			return nil
 		}
 	}
@@ -120,7 +118,7 @@ func (p *Porter) ReconcileInstallation(ctx context.Context, opts ReconcileOption
 	}
 
 	if opts.DryRun {
-		fmt.Fprintln(p.Out, "Skipping bundle execution because --dry-run was specified")
+		log.Info("Skipping bundle execution because --dry-run was specified")
 		return nil
 	}
 
@@ -170,7 +168,7 @@ func (p *Porter) IsInstallationInSync(ctx context.Context, i storage.Installatio
 	// Figure out if we need to upgrade
 	opts := action.GetOptions()
 
-	newRef, err := p.resolveBundleReference(ctx, opts)
+	newRef, err := p.resolveBundleReference(ctx, opts.BundleReferenceOptions)
 	if err != nil {
 		return false, err
 	}

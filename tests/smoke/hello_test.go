@@ -31,7 +31,9 @@ func TestHelloBundle(t *testing.T) {
 
 	// Install the bundle and verify the correct output is printed
 	_, output = test.RequirePorter("install", testdata.MyBuns, "--reference", testdata.MyBunsRef, "--label", "test=true", "-p=mybuns", "-c=mybuns", "--param", "password=supersecret")
-	require.Contains(t, output, "Hello, *******")
+	require.Contains(t, output, "Hello, *******", "expected to see output printed from the bundle itself")
+	// Make sure that when the mixin uses span.Debug to print the command it is running, that it's being printed
+	require.Contains(t, output, "/cnab/app ./helpers.sh install", "expected to see output printed from the porter runtime libraries")
 
 	// Should not see the mybuns installation in the global namespace
 	test.RequireInstallationNotFound("", testdata.MyBuns)
@@ -67,12 +69,14 @@ func TestHelloBundle(t *testing.T) {
 	// Search by namespace
 	installations, err := test.ListInstallations(false, "test", "", nil)
 	require.NoError(t, err)
-	require.Len(t, installations, 1, "expected one installation in the test namespace")
+	require.Len(t, installations, 2, "expected two installations in the test namespace: mybuns-db and mybuns")
+	require.Equal(t, "mybuns-db", installations[0].Name)
+	require.Equal(t, "mybuns", installations[1].Name)
 
 	// Search by name
 	installations, err = test.ListInstallations(true, "", testdata.MyBuns, nil)
 	require.NoError(t, err)
-	require.Len(t, installations, 2, "expected two installations named mybuns")
+	require.Len(t, installations, 4, "expected four installations with mybuns in the name")
 
 	// Search by label
 	installations, err = test.ListInstallations(true, "", "", []string{"test=true"})
@@ -100,8 +104,9 @@ func TestHelloBundle(t *testing.T) {
 	test.RequirePorter("uninstall", testdata.MyBuns, "--namespace", test.CurrentNamespace(), "-c=mybuns")
 	displayInstallations, err := test.ListInstallations(false, test.CurrentNamespace(), testdata.MyBuns, nil)
 	require.NoError(t, err, "List installations failed")
-	require.Len(t, displayInstallations, 1, "expected the installation to still be returned by porter list even though it's uninstalled")
-	require.NotEmpty(t, displayInstallations[0].Status.Uninstalled, "expected the installation to be flagged as uninstalled")
+	require.Len(t, displayInstallations, 2, "expected the installations to still be returned by porter list even though it's uninstalled")
+	require.NotEmpty(t, displayInstallations[0].Status.Uninstalled, "expected the installations to be flagged as uninstalled")
+	require.NotEmpty(t, displayInstallations[1].Status.Uninstalled, "expected the installations to be flagged as uninstalled")
 
 	test.RequirePorter("installation", "delete", testdata.MyBuns, "--namespace", test.CurrentNamespace())
 	test.RequireInstallationNotFound(test.CurrentNamespace(), testdata.MyBuns)

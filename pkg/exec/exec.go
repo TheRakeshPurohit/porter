@@ -1,17 +1,27 @@
 package exec
 
 import (
-	"get.porter.sh/porter/pkg/portercontext"
+	"get.porter.sh/porter/pkg/runtime"
 )
 
-// Exec is the logic behind the exec mixin
+// Mixin is the logic behind the exec mixin
 type Mixin struct {
-	*portercontext.Context
+	// Config is a specialized portercontext.Context with additional runtime settings.
+	Config runtime.RuntimeConfig
+
+	// Debug specifies if the mixin should be in debug mode
+	Debug bool
 }
 
 // New exec mixin client, initialized with useful defaults.
 func New() *Mixin {
 	return &Mixin{
-		Context: portercontext.New(),
+		Config: runtime.NewConfig(),
 	}
+}
+
+// Close releases resources held by the mixin, such as our logging and tracing
+// connections.
+func (m *Mixin) Close() {
+	m.Config.Close()
 }

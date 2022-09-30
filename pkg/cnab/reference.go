@@ -17,14 +17,14 @@ import (
 func ParseOCIReference(value string) (OCIReference, error) {
 	named, err := reference.ParseNormalizedNamed(value)
 	if err != nil {
-		return OCIReference{}, fmt.Errorf("invalid reference format %s: %w", value, err)
+		return OCIReference{}, fmt.Errorf("failed to parse named reference %s: %w", value, err)
 	}
 
 	ref := OCIReference{Named: named}
 	if ref.HasDigest() {
 		err := ref.Digest().Validate()
 		if err != nil {
-			return OCIReference{}, err
+			return OCIReference{}, fmt.Errorf("invalid digest for reference %s: %w", value, err)
 		}
 	}
 
@@ -82,7 +82,7 @@ func (r OCIReference) String() string {
 }
 
 // Repository portion of the reference.
-// Example: ghcr.io/getporter/mybuns:v0.1.1 returns getporter/mybuns
+// Example: docker.io/getporter/mybuns:v0.1.1 returns getporter/mybuns
 func (r OCIReference) Repository() string {
 	if r.Named == nil {
 		return ""

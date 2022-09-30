@@ -7,11 +7,11 @@ Run a command or script.
 
 ✅ Learn how to use the exec mixin with our [Exec Mixin Best Practice Guide](/best-practices/exec-mixin/)
 
-Source: https://porter.sh/src/pkg/exec
+Source: https://getporter.org/src/pkg/exec
 
 ### Install or Upgrade
 ```
-porter mixin install exec
+porter mixin install exec --version v1.0.0-rc.3
 ```
 
 ## Mixin Syntax

@@ -18,11 +18,11 @@ import (
 	"get.porter.sh/porter/pkg/tracing"
 	"github.com/Masterminds/semver/v3"
 	"github.com/opencontainers/go-digest"
+	"golang.org/x/sync/errgroup"
 )
 
 type BuildOptions struct {
 	bundleFileOptions
-	contextOptions
 	metadataOpts
 	build.BuildImageOptions
 
@@ -93,23 +93,19 @@ func (o *BuildOptions) parseCustomInputs() error {
 }
 
 func (p *Porter) Build(ctx context.Context, opts BuildOptions) error {
-	ctx, log := tracing.StartSpan(ctx)
-	defer log.EndSpan()
+	ctx, span := tracing.StartSpan(ctx)
+	defer span.EndSpan()
 
-	opts.Apply(p.Context)
-
-	if p.Debug {
-		fmt.Fprintf(p.Err, "Using %s build driver\n", p.GetBuildDriver())
-	}
+	span.Debugf("Using %s build driver", p.GetBuildDriver())
 
 	// Start with a fresh .cnab directory before building
 	err := p.FileSystem.RemoveAll(build.LOCAL_CNAB)
 	if err != nil {
-		return fmt.Errorf("could not cleanup generated .cnab directory before building: %w", err)
+		return span.Error(fmt.Errorf("could not cleanup generated .cnab directory before building: %w", err))
 	}
 
 	// Generate Porter's canonical version of the user-provided manifest
-	if err := p.generateInternalManifest(opts); err != nil {
+	if err := p.generateInternalManifest(ctx, opts); err != nil {
 		return fmt.Errorf("unable to generate manifest: %w", err)
 	}
 
@@ -136,23 +132,23 @@ func (p *Porter) Build(ctx context.Context, opts BuildOptions) error {
 	// to a registry.  The bundle.json will need to be updated after publishing
 	// and provided just-in-time during bundle execution.
 	if err := p.buildBundle(ctx, m, ""); err != nil {
-		return fmt.Errorf("unable to build bundle: %w", err)
+		return span.Error(fmt.Errorf("unable to build bundle: %w", err))
 	}
 
 	generator := build.NewDockerfileGenerator(p.Config, m, p.Templates, p.Mixins)
 
 	if err := generator.PrepareFilesystem(); err != nil {
-		return fmt.Errorf("unable to copy run script, runtimes or mixins: %s", err)
+		return span.Error(fmt.Errorf("unable to copy run script, runtimes or mixins: %s", err))
 	}
 	if err := generator.GenerateDockerFile(ctx); err != nil {
-		return fmt.Errorf("unable to generate Dockerfile: %s", err)
+		return span.Error(fmt.Errorf("unable to generate Dockerfile: %s", err))
 	}
 
 	builder := p.GetBuilder(ctx)
 
 	err = builder.BuildInvocationImage(ctx, m, opts.BuildImageOptions)
 	if err != nil {
-		return fmt.Errorf("unable to build CNAB invocation image: %w", err)
+		return span.Error(fmt.Errorf("unable to build CNAB invocation image: %w", err))
 	}
 
 	return nil
@@ -160,9 +156,8 @@ func (p *Porter) Build(ctx context.Context, opts BuildOptions) error {
 
 func (p *Porter) preLint(ctx context.Context, file string) error {
 	lintOpts := LintOptions{
-		contextOptions: NewContextOptions(p.Context),
-		PrintOptions:   printer.PrintOptions{},
-		File:           file,
+		PrintOptions: printer.PrintOptions{},
+		File:         file,
 	}
 	lintOpts.RawFormat = string(printer.FormatPlaintext)
 	err := lintOpts.Validate(p.Context)
@@ -188,19 +183,33 @@ func (p *Porter) preLint(ctx context.Context, file string) error {
 }
 
 func (p *Porter) getUsedMixins(ctx context.Context, m *manifest.Manifest) ([]mixin.Metadata, error) {
-	installedMixins, err := p.ListMixins(ctx)
+	ctx, span := tracing.StartSpan(ctx)
+	defer span.EndSpan()
 
-	if err != nil {
-		return nil, fmt.Errorf("error while listing mixins: %w", err)
+	g := new(errgroup.Group)
+	results := make(chan mixin.Metadata, len(m.Mixins))
+	for _, m := range m.Mixins {
+		m := m
+		g.Go(func() error {
+			result, err := p.Mixins.GetMetadata(ctx, m.Name)
+			if err != nil {
+				return err
+			}
+
+			mixinMetadata := result.(*mixin.Metadata)
+			results <- *mixinMetadata
+			return nil
+		})
 	}
 
-	var usedMixins []mixin.Metadata
-	for _, installedMixin := range installedMixins {
-		for _, m := range m.Mixins {
-			if installedMixin.Name == m.Name {
-				usedMixins = append(usedMixins, installedMixin)
-			}
-		}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	usedMixins := make([]mixin.Metadata, len(m.Mixins))
+	for i := 0; i < len(usedMixins); i++ {
+		result := <-results
+		usedMixins[i] = result
 	}
 
 	return usedMixins, nil
@@ -210,7 +219,6 @@ func (p *Porter) buildBundle(ctx context.Context, m *manifest.Manifest, digest d
 	imageDigests := map[string]string{m.Image: digest.String()}
 
 	mixins, err := p.getUsedMixins(ctx, m)
-
 	if err != nil {
 		return err
 	}

@@ -2,8 +2,6 @@ package manifest
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -24,17 +22,28 @@ import (
 	"github.com/cbroglie/mustache"
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 	"github.com/opencontainers/go-digest"
 )
 
 const (
 	invalidStepErrorFormat = "validation of action \"%s\" failed: %w"
 
-	// SupportedSchemaVersion is the Porter manifest (porter.yaml) schema
-	// version supported by this version of Porter.
+	// TemplateDelimiterPrefix must be present at the beginning of any porter.yaml
+	// that wants to use ${} as the template delimiter instead of the mustache
+	// default of {{}}.
+	TemplateDelimiterPrefix = "{{=${ }=}}\n"
+)
+
+var (
+	// SupportedSchemaVersions is the Porter manifest (porter.yaml) schema
+	// versions supported by this version of Porter, specified as a semver range.
 	// When the Manifest structure is changed, this field should be incremented.
-	SupportedSchemaVersion = "1.0.0-alpha.1"
+	SupportedSchemaVersions, _ = semver.NewConstraint("1.0.0-alpha.1 || 1.0.0")
+
+	// DefaultSchemaVersion is the most recently supported schema version.
+	// When the Manifest structure is changed, this field should be incremented.
+	DefaultSchemaVersion = semver.MustParse("1.0.0")
 )
 
 type Manifest struct {
@@ -138,7 +147,7 @@ func (m *Manifest) Validate(cxt *portercontext.Context, strategy schema.CheckStr
 		}
 	}
 
-	for _, dep := range m.Dependencies.RequiredDependencies {
+	for _, dep := range m.Dependencies.Requires {
 		err = dep.Validate(cxt)
 		if err != nil {
 			result = multierror.Append(result, err)
@@ -170,7 +179,7 @@ func (m *Manifest) Validate(cxt *portercontext.Context, strategy schema.CheckStr
 }
 
 func (m *Manifest) validateMetadata(cxt *portercontext.Context, strategy schema.CheckStrategy) error {
-	if warnOnly, err := schema.ValidateSchemaVersion(strategy, SupportedSchemaVersion, m.SchemaVersion); err != nil {
+	if warnOnly, err := schema.ValidateSchemaVersion(strategy, SupportedSchemaVersions, m.SchemaVersion, DefaultSchemaVersion); err != nil {
 		if warnOnly {
 			fmt.Fprintln(cxt.Err, err)
 		} else {
@@ -587,11 +596,38 @@ func (mi *MappedImage) Validate() error {
 	return nil
 }
 
-type Dependencies struct {
-	RequiredDependencies []*RequiredDependency `yaml:"requires,omitempty"`
+func (mi *MappedImage) ToOCIReference() (cnab.OCIReference, error) {
+	ref, err := cnab.ParseOCIReference(mi.Repository)
+	if err != nil {
+		return cnab.OCIReference{}, err
+	}
+
+	if mi.Digest != "" {
+		refWithDigest, err := ref.WithDigest(digest.Digest(mi.Digest))
+		if err != nil {
+			return cnab.OCIReference{}, fmt.Errorf("failed to create a new reference with digest for repository %s: %w", mi.Repository, err)
+		}
+
+		return refWithDigest, nil
+	}
+
+	if mi.Tag != "" {
+		refWithTag, err := ref.WithTag(mi.Tag)
+		if err != nil {
+			return cnab.OCIReference{}, fmt.Errorf("failed to create a new reference with tag for repository %s: %w", mi.Repository, err)
+		}
+
+		return refWithTag, nil
+	}
+
+	return ref, nil
 }
 
-type RequiredDependency struct {
+type Dependencies struct {
+	Requires []*Dependency `yaml:"requires,omitempty"`
+}
+
+type Dependency struct {
 	Name string `yaml:"name"`
 
 	Bundle BundleCriteria `yaml:"bundle"`
@@ -609,10 +645,10 @@ type BundleCriteria struct {
 	// This includes considering prereleases to be invalid if the ranges does not include one.
 	// If you want to have it include pre-releases a simple solution is to include -0 in your range."
 	// https://github.com/Masterminds/semver/blob/master/README.md#checking-version-constraints
-	Version string `yaml:"versions,omitempty"`
+	Version string `yaml:"version,omitempty"`
 }
 
-func (d *RequiredDependency) Validate(cxt *portercontext.Context) error {
+func (d *Dependency) Validate(cxt *portercontext.Context) error {
 	if d.Name == "" {
 		return errors.New("dependency name is required")
 	}
@@ -909,18 +945,12 @@ func (m *Manifest) SetInvocationImageAndReference(ref string) error {
 		m.Reference = bundleRef.String()
 	}
 
-	imageName, err := cnab.ParseOCIReference(bundleRef.Repository())
+	installerImage, err := cnab.CalculateTemporaryImageTag(bundleRef)
 	if err != nil {
-		return fmt.Errorf("could not set invocation image to %q: %w", bundleRef.Repository(), err)
+		return err
 	}
-	referenceHash := md5.Sum([]byte(bundleRef.String()))
-	imgTag := hex.EncodeToString(referenceHash[:])
-	imageRef, err := imageName.WithTag(imgTag)
-	if err != nil {
-		return fmt.Errorf("could not set invocation image tag to %q: %w", dockerTag, err)
-	}
-	m.Image = imageRef.String()
 
+	m.Image = installerImage.String()
 	return nil
 }
 
@@ -1004,14 +1034,14 @@ func ReadManifest(cxt *portercontext.Context, path string) (*Manifest, error) {
 		return nil, err
 	}
 
-	tmplResult, err := scanManifestTemplating(data)
-	if err != nil {
-		return nil, err
-	}
-
 	m, err := UnmarshalManifest(cxt, data)
 	if err != nil {
 		return nil, fmt.Errorf("unsupported property set or a custom action is defined incorrectly: %w", err)
+	}
+
+	tmplResult, err := m.scanManifestTemplating(data)
+	if err != nil {
+		return nil, err
 	}
 
 	m.ManifestPath = path
@@ -1026,9 +1056,29 @@ type templateScanResult struct {
 	Variables []string
 }
 
-func scanManifestTemplating(data []byte) (templateScanResult, error) {
+func (m *Manifest) GetTemplatePrefix() string {
+	if m.SchemaVersion == "" {
+		// Super-old bundles use the mustache default
+		return ""
+	}
+
+	// In 1.0.0-alpha.2+, the prefix is ${}. Beforehand it was {{}}
+	v, err := semver.NewVersion(m.SchemaVersion)
+	if err == nil {
+		if v.GreaterThan(semver.MustParse("v1.0.0-alpha.1")) {
+			// Change the delimiter
+			return TemplateDelimiterPrefix
+		}
+	}
+
+	// Fallback to the mustache default if we can't determine the schema version
+	return ""
+}
+
+func (m *Manifest) scanManifestTemplating(data []byte) (templateScanResult, error) {
 	const disableHtmlEscaping = true
-	tmpl, err := mustache.ParseStringRaw(string(data), disableHtmlEscaping)
+	templateSrc := m.GetTemplatePrefix() + string(data)
+	tmpl, err := mustache.ParseStringRaw(templateSrc, disableHtmlEscaping)
 	if err != nil {
 		return templateScanResult{}, fmt.Errorf("error parsing the templating used in the manifest: %w", err)
 	}

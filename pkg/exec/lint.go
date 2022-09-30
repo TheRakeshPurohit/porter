@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -26,10 +27,10 @@ const (
 	CodeBashCArgMissingQuotes linter.Code = "exec-101"
 )
 
-func (m *Mixin) Lint() (linter.Results, error) {
+func (m *Mixin) Lint(ctx context.Context) (linter.Results, error) {
 	var input BuildInput
 
-	err := builder.LoadAction(m.Context, "", func(contents []byte) (interface{}, error) {
+	err := builder.LoadAction(ctx, m.Config, "", func(contents []byte) (interface{}, error) {
 		err := yaml.Unmarshal(contents, &input)
 		return &input, err
 	})
@@ -75,7 +76,7 @@ func (m *Mixin) Lint() (linter.Results, error) {
 				},
 				Title:   "Best Practice: Avoid Embedded Bash",
 				Message: "",
-				URL:     "https://porter.sh/best-practices/exec-mixin/#use-scripts",
+				URL:     "https://getporter.org/best-practices/exec-mixin/#use-scripts",
 			}
 			results = append(results, result)
 
@@ -99,7 +100,7 @@ exec:
   flags:
     c: '"echo Hello World"'
 `,
-						URL: "https://porter.sh/best-practices/exec-mixin/#quoting-escaping-bash-and-yaml",
+						URL: "https://getporter.org/best-practices/exec-mixin/#quoting-escaping-bash-and-yaml",
 					}
 					results = append(results, result)
 					break
@@ -111,8 +112,8 @@ exec:
 	return results, nil
 }
 
-func (m *Mixin) PrintLintResults() error {
-	results, err := m.Lint()
+func (m *Mixin) PrintLintResults(ctx context.Context) error {
+	results, err := m.Lint(ctx)
 	if err != nil {
 		return err
 	}
@@ -124,7 +125,7 @@ func (m *Mixin) PrintLintResults() error {
 
 	// Print the results as json to stdout for Porter to read
 	resultsJson := string(b)
-	fmt.Fprintln(m.Out, resultsJson)
+	fmt.Fprintln(m.Config.Out, resultsJson)
 
 	return nil
 }

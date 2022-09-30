@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"get.porter.sh/porter/pkg/cli"
+	"get.porter.sh/porter/pkg/config"
 	"get.porter.sh/porter/pkg/porter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -26,15 +27,6 @@ const (
 	// This is used for commands like help and version which should never
 	// fail, even with porter is misconfigured.
 	skipConfig string = "skipConfig"
-
-	// exitCodeSuccess indicates the program ran successfully
-	exitCodeSuccess = 0
-
-	// exitCodeErr indicates the program encountered an error
-	exitCodeErr = 1
-
-	// exitCodeInterrupt indicates the program was cancelled
-	exitCodeInterrupt = 2
 )
 
 func main() {
@@ -63,7 +55,7 @@ func main() {
 		if !shouldSkipConfig(cmd) {
 			if err := p.Connect(ctx); err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
-				os.Exit(exitCodeErr)
+				os.Exit(cli.ExitCodeErr)
 			}
 		}
 
@@ -76,7 +68,7 @@ func main() {
 					attribute.String("stackTrace", string(debug.Stack())))
 				log.EndSpan()
 				p.Close()
-				os.Exit(exitCodeErr)
+				os.Exit(cli.ExitCodeErr)
 			} else {
 				log.Close()
 				p.Close()
@@ -87,9 +79,9 @@ func main() {
 			// Ideally we log all errors in the span that generated it,
 			// but as a failsafe, always log the error at the root span as well
 			log.Error(err)
-			return exitCodeErr
+			return cli.ExitCodeErr
 		}
-		return exitCodeSuccess
+		return cli.ExitCodeSuccess
 	}
 
 	// Wrapping the main run logic in a function because os.Exit will not
@@ -113,7 +105,7 @@ func handleInterrupt(ctx context.Context, p *porter.Porter) (context.Context, fu
 		}
 		<-signalChan // second signal, hard exit
 		fmt.Println("hard interrupt received, bye!")
-		os.Exit(exitCodeInterrupt)
+		os.Exit(cli.ExitCodeInterrupt)
 	}()
 
 	return ctx, func() {
@@ -173,7 +165,7 @@ func buildRootCommandFrom(p *porter.Porter) *cobra.Command {
 
 Most commands require a Docker daemon, either local or remote.
 
-Try our QuickStart https://porter.sh/quickstart to learn how to use Porter.
+Try our QuickStart https://getporter.org/quickstart to learn how to use Porter.
 `,
 		Example: `  porter create
   porter build
@@ -218,9 +210,8 @@ Try our QuickStart https://porter.sh/quickstart to learn how to use Porter.
 
 	// These flags are available for every command
 	globalFlags := cmd.PersistentFlags()
-	globalFlags.BoolVar(&p.Debug, "debug", false, "Enable debug logging")
-	globalFlags.BoolVar(&p.DebugPlugins, "debug-plugins", false, "Enable plugin debug logging")
-	globalFlags.StringSliceVar(&p.Data.ExperimentalFlags, "experimental", nil, "Comma separated list of experimental features to enable. See https://porter.sh/configuration/#experimental-feature-flags for available feature flags.")
+	globalFlags.StringVar(&p.Data.Verbosity, "verbosity", config.DefaultVerbosity, "Threshold for printing messages to the console. Available values are: debug, info, warning, error.")
+	globalFlags.StringSliceVar(&p.Data.ExperimentalFlags, "experimental", nil, "Comma separated list of experimental features to enable. See https://getporter.org/configuration/#experimental-feature-flags for available feature flags.")
 
 	// Flags for just the porter command only, does not apply to sub-commands
 	cmd.Flags().BoolVarP(&printVersion, "version", "v", false, "Print the application version")

@@ -20,7 +20,7 @@ func TestPorter_Lint_ChecksManifestSchemaVersion(t *testing.T) {
 		schemaVersion string
 		wantErr       string
 	}{
-		{name: "valid version", schemaVersion: manifest.SupportedSchemaVersion},
+		{name: "valid version", schemaVersion: manifest.DefaultSchemaVersion.String()},
 		{name: "invalid version", schemaVersion: "", wantErr: "invalid schema version"},
 	}
 	for _, tc := range testcases {
@@ -86,16 +86,18 @@ exec:
   flags:
     c: '"echo Hello World"'
 `,
-			URL: "https://porter.sh/best-practices/exec-mixin/#quoting-escaping-bash-and-yaml",
+			URL: "https://getporter.org/best-practices/exec-mixin/#quoting-escaping-bash-and-yaml",
 		},
 	}
 
 	testcases := []struct {
 		format         string
 		wantOutputFile string
+		linterResults  linter.Results
 	}{
-		{"plaintext", "testdata/lint/results.txt"},
-		{"json", "testdata/lint/results.json"},
+		{"plaintext", "testdata/lint/results.txt", lintResults},
+		{"json", "testdata/lint/results.json", lintResults},
+		{"plaintext", "testdata/lint/success.txt", linter.Results{}},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.format, func(t *testing.T) {
@@ -105,7 +107,7 @@ exec:
 			p.TestConfig.TestContext.AddTestFile("testdata/porter.yaml", "porter.yaml")
 
 			mixins := p.Mixins.(*mixin.TestMixinProvider)
-			mixins.LintResults = lintResults
+			mixins.LintResults = tc.linterResults
 
 			var opts LintOptions
 			opts.RawFormat = tc.format

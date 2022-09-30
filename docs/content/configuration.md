@@ -17,10 +17,9 @@ You may set a default value for a configuration value in the config file, overri
 * [Experimental Feature Flags](#experimental-feature-flags)
   * [Build Drivers](#build-drivers)
   * [Structured Logs](#structured-logs)
+  * [Dependencies v2](#dependencies-v2)
 * [Common Configuration Settings](#common-configuration-settings)
   * [Set Current Namespace](#namespace)
-  * [Enable Debug Output](#debug)
-  * [Debug Plugins](#debug-plugins)
   * [Output Formatting](#output)
 * [Allow Docker Host Access](#allow-docker-host-access)
 
@@ -61,11 +60,10 @@ Below is an example configuration file in TOML:
 # Set the default namespace
 namespace = "dev"
 
-# Include debug logs
-debug = true
-
-# Include debug logs from the plugins
-debug-plugins = true
+# Threshold for printing messages to the console
+# Allowed values are: debug, info, warn, error.
+# Does not affect what is written to the log file or traces.
+verbosity = "debug"
 
 # Default command output to JSON
 output = "json"
@@ -78,6 +76,10 @@ experimental = ["flagA", "flagB"]
 
 # Use Docker buildkit to build the bundle
 build-driver = "buildkit"
+
+# Overwrite the existing published bundle when publishing or copying a bundle.
+# By default, Porter detects when a push would overwrite an existing artifact and requires --force to proceed.
+force-overwrite = false
 
 # Use the storage configuration named devdb
 default-storage = "devdb"
@@ -259,6 +261,11 @@ Below is a sample Porter configuration file that demonstrates how to set each of
 
 [otel]: https://github.com/open-telemetry/opentelemetry-specification/blob/v1.8.0/specification/protocol/exporter.md
 
+### Dependencies v2
+
+The `dependencies-v2` experimental flag is not yet implemented.
+When it is completed, it is used to activate the features from [PEP003 - Advanced Dependencies](https://github.com/getporter/proposals/blob/main/pep/003-dependency-namespaces-and-labels.md).
+
 ## Common Configuration Settings
 
 Some configuration settings are applicable to many of Porter's commands and to save time you may want to set these values in the configuration file or with environment variables.
@@ -269,27 +276,6 @@ It is set with the PORTER_NAMESPACE environment variable.
 
 ```toml
 namespace = "dev"
-```
-
-### Debug
-
-\--debug is a flag that is understood not only by the porter client but also the runtime and most mixins.
-They may use it to print additional information that may be useful when you think you may have found a bug, when you want to know what commands they are executing, or when you need really verbose output to send
-to the developers.
-It is set with the PORTER_DEBUG environment variable.
-
-```toml
-debug = true
-```
-
-### Debug Plugins
-
-\--debug-plugins controls if logs related to communication between porter and its plugins should be printed when debugging.
-This can be _very_ verbose, so it is not turned on by default when debug is true.
-It is set with the PORTER_DEBUG_PLUGINS environment variable.
-
-```toml
-debug-plugins = true
 ```
 
 ### Output
@@ -320,11 +306,11 @@ Therefore, it does not work with the Azure Cloud Shell driver.
 
 ### Schema Check
 The schema-check configuration file setting controls Porter's behavior when the schemaVersion of a resource does not match [Porter's supported version](/reference/file-formats/#supported-versions).
-By default, Porter requires that a resource's schemaVersion field exactly matches the supported version.
+By default, Porter requires that a resource's schemaVersion field matches Porter's allowed version(s).
 In some cases, such as when migrating to a new version of Porter, it may be helpful to use a less strict version comparison.
 Allowed values are:
 
-* exact - Default behavior. Require that the schemaVersion on the resource exactly match Porter's supported version.
+* exact - Default behavior. Require that the schemaVersion on the resource exactly match Porter's supported version(s).
   If it doesn't match, the command will fail.
 * minor - Require that the MAJOR.MINOR portion of the schemaVersion on the resource match Porter's supported version.
   For example, a bundle with a schemaVersion of 1.2.3 would work even though the supported version is 1.2.5.

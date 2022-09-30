@@ -38,7 +38,7 @@
 
       <nav class="home-nav">
         <h1>
-          <a href="{{ .Site.BaseURL }}" title="porter.sh">
+          <a href="{{ .Site.BaseURL }}" title="Home">
             {{ partial "logo.html" . }}
           </a>
         </h1>
@@ -55,7 +55,7 @@
 
           <section class="billboard row mx-0">
             <div class="container col-md-10 text-center">
-              <h1 class="mb-3">Your Application and everything you need to Deploy, <span id="underline1"> Together </span> </h1>
+              <h1 class="mb-3">Your application, and everything you need to deploy, together 💖</h1>
               <h2>Package your application, client tools, configuration, and deployment logic into an installer that you can distribute and run with a single command.</h2>
 
               <button class="btn btn-github mt-3 btn-lg text-center">
@@ -68,7 +68,7 @@
           </section>
 
           <div class="container content">
-            <div class="row">
+            <div class="row m-0">
               <div class="small-12 columns">
                 <h2>What is Porter?</h2>
                 <p class="p-0">Take everything you need to do a deployment, the application itself and the entire process
@@ -79,7 +79,7 @@
                 </p>
 
                 <h2>Why Porter?</h2>
-                <ul>
+                <ul class="why-porter">
                   <li>Single command to find and deploy any application, regardless of the tech stack. No knowledge of the deployment process necessary.</li>
                   <li>Secure handling of secrets and credentials, integrated with industry standard secret stores.</li>
                   <li>Share the operational load of managing your team's deployments.</li>
@@ -89,9 +89,11 @@
 
                 <div>
                 <h2>When would I use Porter?</h2>
-                <p class="p-0">Porter is never a replacement for an existing tool. Think of it as doing extra nice things on top of what those great tools already do!</p>
+                <p class="p-0">Porter is never a replacement for an existing tool. Think of it as doing extra nice things on top of what those great tools already do!
+                Below are some reasons why working with bundles with the tools embedded inside is helpful vs. using the same tools standalone.
+                </p>
                 <ul class="emoji-list row p-0 my-5" style="justify-content: center;">
-                  <li class="card p-3" style="width: 20rem; margin-right: 2%;">
+                  <li class="card p-3 mt-4" style="width: 20rem; margin-right: 2%;">
                     <i class="fa-solid fa-box fa-3x card-img-top text-center"></i>
                     <div class="card-body">
                       <h5 class="card-title">Package</h5>
@@ -101,17 +103,19 @@
                     </div>
                   </li>
 
-                  <li class="card p-3" style="width: 20rem; margin-right: 2%;">
+                  <li class="card p-3 mt-4" style="width: 20rem; margin-right: 2%;">
+                    <a href="/security-features/">
                     <i class="fa-solid fa-file-signature fa-3x card-img-top text-center"></i>
                     <div class="card-body">
-                      <h5 class="card-title">Signature</h5>
+                      <h5 class="card-title">Secure</h5>
                       <p class="card-text mb-0">
-                        Sign the bundle and verify its signature before installing as part of your supply chain security solution.
+                        JIT secret injection, immutable artifacts, and container security are just some of Porter's security features.
                       </p>
                     </div>
+                    </a>
                   </li>
 
-                  <li class="card p-3" style="width: 20rem;">
+                  <li class="card p-3 mt-4" style="width: 20rem;">
                     <i class="fa-solid fa-clock fa-3x card-img-top text-center"></i>
                     <div class="card-body">
                       <h5 class="card-title">Time</h5>
@@ -151,9 +155,28 @@
                     </div>
                   </li>
                 </ul>
-                <p class="p-0">These are just some of the reasons why working with bundles with the tools embedded inside is helpful vs. using the same tools standalone.</p>
+                <p class="p-0"></p>
               </div>
 
+              </div>
+            </div>
+          </div>
+
+          <div class="container content helm-quotes">
+            <div class="row mx-auto">
+              <div class="small-12 medium-12 columns">
+                <p style="padding-top: 2em;">
+                  "It used to take a day for the dev team to roll out one to two environments.
+                  We’ve gone from that to the ability to parallelize our deployment pipeline to target thousands of instances overnight at the push of a button.
+                  The potential cost savings are significant given the scale we're talking about."
+                </p>
+                <p style="text-align: right;">
+                  Ken Priyadarshi: EY Global Chief Architect<br>
+                  <a href="https://www.ey.com">EY Technology</a><br>
+                </p>
+                <p style="text-align: center;">
+                  <a href="https://customers.microsoft.com/en-us/story/1491491165781122603-ey-professionalservices">Read the case study</a>
+                </p>
               </div>
             </div>
           </div>
@@ -231,36 +254,46 @@
           </div>
 
           <div class="container content helm-community">
-            <div class="row">
+            <div class="row mx-auto">
               <div class="small-12 medium-12 columns">
                 <h2 class="text-center">Join the Community</h2>
                 <p class="text-center">More information about the Porter project, and how to contribute.</p>
 
-                <div class="row">
+                <div class="row mx-auto">
                   <div class="small-12 medium-12 large-5 helm-community-links columns">
-                    <ul>
-                      <li><i class="fa fa-book"></i> <a href="{{.Site.BaseURL}}docs">Read the Docs</a></li>
-                      <li><i class="fa fa-tv"></i> <a href="{{.Site.BaseURL}}learning">Learning</a></li>
-                      <li><i class="fa fa-comments"></i> <a href="{{.Site.BaseURL}}community">Community</a></li>
-                      <li><i class="fa fa-github"></i> <a href="https://github.com/getporter/porter">Porter on Github</a></li>
+                    <ul class="mx-5 mt-3 mb-5 p-0 text-center">
+                      <li class="btn-section"><i class="fa-solid fa-book"></i> <a href="{{.Site.BaseURL}}docs">Read the Docs</a></li>
+                      <li class="btn-section"><i class="fa-solid fa-tv"></i> <a href="{{.Site.BaseURL}}learning">Learning</a></li>
+                      <li class="btn-section"><i class="fa-solid fa-comments"></i> <a href="{{.Site.BaseURL}}community">Community</a></li>
+                      <li class="btn-section"><i class="fa-brands fa-github"></i> <a href="https://github.com/getporter/porter">Porter on Github</a></li>
                     </ul>
                   </div>
 
                   <div class="hide-for-medium-down medium-7 helm-community-blocks columns">
+
+
                     <section>
-                      <h4>Project Status</h4>
-                      <p>Porter is <a href="/cnab/">committed to supporting the CNAB specification</a>. We support the current 1.1.0 specification and all published sub-specifications.</p>
-                      <p align=center>Check out our <a href="https://porter.sh/roadmap">roadmap</a>.</p>
+                      <div class="topbar--1"></div>
+                      <div class="text-content">
+                        <h4><i class="fa-solid fa-heart"></i> Work on Porter with us!</h4>
+                        <p class="p-0">We are actively seeking out new contributors with the
+                        hopes of building up both casual contributors and enticing
+                        some of you into becoming reviewers and maintainers.</p>
+
+                        <p align="center">Learn how to <a href="/contribute/">Join Us!</a></p>
+                      </div>
                     </section>
 
                     <section>
-                      <h4>Work on Porter with us! 💖</h4>
-                      <p>We are actively seeking out new contributors with the
-                      hopes of building up both casual contributors and enticing
-                      some of you into becoming reviewers and maintainers.</p>
+                      <div class="topbar"></div>
 
-                      <p align="center">Learn how to <a href="/contribute/">join us</a>.</p>
+                      <div class="text-content">
+                        <h4>Project Status</h4>
+                        <p class="p-0">Porter is committed to supporting the <a href="/cnab/">CNAB specification</a>. We support the current 1.1.0 specification and all published sub-specifications.</p>
+                        <p align=center>Check out our <a href="https://getporter.org/roadmap">Roadmap!</a></p>
+                      </div>
                     </section>
+
                   </div>
                 </div>
 

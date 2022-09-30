@@ -34,12 +34,12 @@ porter parameters generate [NAME] [flags]
 ### Examples
 
 ```
-  porter parameter generate
-  porter parameter generate myparamset --reference getporter/hello-llama:v0.1.1 --namespace dev
-  porter parameter generate myparamset --label owner=myname --reference getporter/hello-llama:v0.1.1
-  porter parameter generate myparamset --reference localhost:5000/getporter/hello-llama:v0.1.1 --insecure-registry --force
-  porter parameter generate myparamset --file myapp/porter.yaml
-  porter parameter generate myparamset --cnab-file myapp/bundle.json
+  porter parameters generate
+  porter parameters generate myparamset --reference getporter/hello-llama:v0.1.1 --namespace dev
+  porter parameters generate myparamset --label owner=myname --reference getporter/hello-llama:v0.1.1
+  porter parameters generate myparamset --reference localhost:5000/getporter/hello-llama:v0.1.1 --insecure-registry --force
+  porter parameters generate myparamset --file myapp/porter.yaml
+  porter parameters generate myparamset --cnab-file myapp/bundle.json
 
 ```
 
@@ -59,9 +59,8 @@ porter parameters generate [NAME] [flags]
 ### Options inherited from parent commands
 
 ```
-      --debug                  Enable debug logging
-      --debug-plugins          Enable plugin debug logging
-      --experimental strings   Comma separated list of experimental features to enable. See https://porter.sh/configuration/#experimental-feature-flags for available feature flags.
+      --experimental strings   Comma separated list of experimental features to enable. See https://getporter.org/configuration/#experimental-feature-flags for available feature flags.
+      --verbosity string       Threshold for printing messages to the console. Available values are: debug, info, warning, error. (default "info")
 ```
 
 ### SEE ALSO

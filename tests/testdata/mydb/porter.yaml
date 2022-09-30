@@ -1,6 +1,6 @@
 # This is a test bundle that can be used as a dependency
 
-schemaVersion: 1.0.0-alpha.1
+schemaVersion: 1.0.0
 name: mydb
 version: 0.1.0
 description: "A test bundle dependency"
@@ -15,9 +15,18 @@ outputs:
   - name: connStr
     type: file
     path: /cnab/app/connection-string.txt
+    applyTo:
+      - install
+      - upgrade
 
 mixins:
   - exec
+
+dry-run:
+  - exec:
+      command: echo
+      arguments:
+        - "ready to install mydb"
 
 install:
   - exec:
@@ -27,7 +36,18 @@ install:
   - exec:
       command: echo
       arguments:
-        - "database: {{ bundle.parameters.database }}"
+        - "database: ${ bundle.parameters.database }"
+  - exec:
+      description: "Debug"
+      command: echo
+      arguments:
+        - "image:${ bundle.installerImage }"
+
+status:
+  - exec:
+      command: echo
+      arguments:
+        - "mydb is looking great!"
 
 upgrade:
   - exec:

@@ -14,7 +14,7 @@ This QuickStart walks you through how to manage credential sets, parameter sets 
 First, let's look at the bundle used in this QuickStart.
 
 ```console
-$ porter explain --reference ghcr.io/getporter/examples/credentials-tutorial:v0.3.0
+$ porter explain ghcr.io/getporter/examples/credentials-tutorial:v0.3.0
 Name: examples/credentials-tutorial
 Description: An example Porter bundle with credentials. Uses your GitHub token to retrieve your public user profile from GitHub.
 Version: 0.3.0
@@ -297,6 +297,7 @@ In this QuickStart you learned how to manage installations using desired state b
 
 * [Understand the difference between imperative commands and desired state](/end-users/installations/)
 * [Automating Porter with the Porter Operator](/operator/)
+* [Create a bundle](/bundle/create/)
 
 [managing installations]: /end-users/installations/
 [porter credentials apply]: /cli/porter_credentials_apply/

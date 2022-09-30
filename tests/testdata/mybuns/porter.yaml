@@ -1,11 +1,14 @@
 # This is a test bundle that makes no logical sense, but it does exercise lots of different bundle features
 
-schemaVersion: 1.0.0-alpha.1
+schemaVersion: 1.0.0
 name: mybuns
 version: 0.1.2
 description: "A very thorough test bundle"
 registry: localhost:5000
 dockerfile: Dockerfile.tmpl
+
+required:
+  - docker
 
 credentials:
   - name: username
@@ -50,15 +53,24 @@ state:
     path: magic.txt
 
 dependencies:
-  required:
+  requires:
     - name: db
       bundle:
         reference: "localhost:5000/mydb:v0.1.0"
       parameters:
         database: bigdb
 
+images:
+  whalesayd:
+    description: "Whalesay as a service"
+    imageType: "docker"
+    repository: carolynvs/whalesayd
+    tag: "latest"
+
 mixins:
   - exec
+  - testmixin:
+      clientVersion: 1.2.3
 
 customActions:
   dry-run:
@@ -72,11 +84,16 @@ customActions:
 
 install:
   - exec:
+      description: "Check the docker socket"
+      command: stat
+      arguments:
+        - /var/run/docker.sock
+  - exec:
       description: "Let's make some magic"
       command: ./helpers.sh
       arguments:
         - makeMagic
-        - "'{{ bundle.credentials.username }} is a unicorn with {{ bundle.parameters.password }} secret.'"
+        - "${ bundle.credentials.username } is a unicorn with ${ bundle.parameters.password } secret."
   - exec:
       description: "install"
       command: ./helpers.sh
@@ -90,11 +107,10 @@ install:
       command: ./helpers.sh
       arguments:
         - chaos_monkey
-        - "{{ bundle.parameters.chaos_monkey }}"
+        - ${ bundle.parameters.chaos_monkey }
       outputs:
         - name: result
           regex: "(.*)"
-
 
 dry-run:
   - exec:
@@ -108,7 +124,7 @@ status:
       description: "Print config"
       command: cat
       arguments:
-        - "{{ bundle.parameters.cfg }}"
+        - ${ bundle.parameters.cfg }
   - exec:
       description: "Print magic"
       command: cat
@@ -141,7 +157,7 @@ upgrade:
       command: ./helpers.sh
       arguments:
         - chaos_monkey
-        - "{{ bundle.parameters.chaos_monkey }}"
+        - ${ bundle.parameters.chaos_monkey }
       outputs:
         - name: result
           regex: "(.*)"
@@ -162,4 +178,4 @@ uninstall:
       command: ./helpers.sh
       arguments:
         - chaos_monkey
-        - "{{ bundle.parameters.chaos_monkey }}"
+        - ${ bundle.parameters.chaos_monkey }

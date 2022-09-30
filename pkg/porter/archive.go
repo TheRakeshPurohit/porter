@@ -6,13 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"get.porter.sh/porter/pkg"
 	"get.porter.sh/porter/pkg/cnab"
+	cnabtooci "get.porter.sh/porter/pkg/cnab/cnab-to-oci"
 	"get.porter.sh/porter/pkg/tracing"
 	"github.com/carolynvs/aferox"
 	"github.com/cnabio/cnab-go/bundle"
@@ -25,7 +28,7 @@ import (
 
 // ArchiveOptions defines the valid options for performing an archive operation
 type ArchiveOptions struct {
-	BundleActionOptions
+	BundleReferenceOptions
 	ArchiveFile string
 }
 
@@ -42,7 +45,7 @@ func (o *ArchiveOptions) Validate(ctx context.Context, args []string, p *Porter)
 	if o.Reference == "" {
 		return errors.New("must provide a value for --reference of the form REGISTRY/bundle:tag")
 	}
-	return o.BundleActionOptions.Validate(ctx, args, p)
+	return o.BundleReferenceOptions.Validate(ctx, args, p)
 }
 
 // Archive is a composite function that generates a CNAB thick bundle. It will pull the invocation image, and
@@ -57,7 +60,7 @@ func (p *Porter) Archive(ctx context.Context, opts ArchiveOptions) error {
 		return log.Error(fmt.Errorf("parent directory %q does not exist", dir))
 	}
 
-	bundleRef, err := p.resolveBundleReference(ctx, &opts.BundleActionOptions)
+	bundleRef, err := p.resolveBundleReference(ctx, &opts.BundleReferenceOptions)
 	if err != nil {
 		return log.Error(err)
 	}
@@ -81,6 +84,7 @@ func (p *Porter) Archive(ctx context.Context, opts ArchiveOptions) error {
 		relocationMap:         bundleRef.RelocationMap,
 		destination:           dest,
 		imageStoreConstructor: ctor,
+		insecureRegistry:      opts.InsecureRegistry,
 	}
 	if err := exp.export(); err != nil {
 		return log.Error(err)
@@ -98,6 +102,7 @@ type exporter struct {
 	destination           io.Writer
 	imageStoreConstructor imagestore.Constructor
 	imageStore            imagestore.Store
+	insecureRegistry      bool
 }
 
 func (ex *exporter) export() error {
@@ -127,17 +132,27 @@ func (ex *exporter) export() error {
 		return fmt.Errorf("unable to write relocation-mapping.json in archive: %w", err)
 	}
 
-	ex.imageStore, err = ex.imageStoreConstructor(imagestore.WithArchiveDir(archiveDir), imagestore.WithLogs(ex.logs))
+	var transport *http.Transport
+	if ex.insecureRegistry {
+		transport = cnabtooci.GetInsecureRegistryTransport()
+	} else {
+		transport = http.DefaultTransport.(*http.Transport)
+	}
+
+	ex.imageStore, err = ex.imageStoreConstructor(
+		imagestore.WithArchiveDir(archiveDir),
+		imagestore.WithLogs(ex.logs),
+		imagestore.WithTransport(transport))
 	if err != nil {
 		return fmt.Errorf("error creating artifacts: %s", err)
 	}
 
 	if err := ex.prepareArtifacts(ex.bundle); err != nil {
-		return fmt.Errorf("error preparing artifacts: %s", err)
+		return fmt.Errorf("error preparing bundle artifact: %s", err)
 	}
 
 	if err := ex.chtimes(archiveDir); err != nil {
-		return fmt.Errorf("error preparing artifacts: %s", err)
+		return fmt.Errorf("error clearing timestamps on the bundle artifact: %s", err)
 	}
 
 	tarOptions := &archive.TarOptions{
@@ -180,8 +195,13 @@ func (ex *exporter) chtimes(path string) error {
 // prepareArtifacts pulls all images, verifies their digests and
 // saves them to a directory called artifacts/ in the bundle directory
 func (ex *exporter) prepareArtifacts(bun cnab.ExtendedBundle) error {
-	for _, image := range bun.Images {
-		if err := ex.addImage(image.BaseImage); err != nil {
+	var imageKeys []string
+	for imageKey := range bun.Images {
+		imageKeys = append(imageKeys, imageKey)
+	}
+	sort.Strings(imageKeys)
+	for _, k := range imageKeys {
+		if err := ex.addImage(bun.Images[k].BaseImage); err != nil {
 			return err
 		}
 	}

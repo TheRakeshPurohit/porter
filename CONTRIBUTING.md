@@ -22,6 +22,7 @@
   * [Breaking Changes](#breaking-changes)
 * [Infrastructure](#infrastructure)
   * [CDN Setup](#cdn-setup)
+  * [Custom Windows CI Agent](#custom-windows-ci-agent)
   * [Releases](#releases)
 
 ---
@@ -35,7 +36,7 @@ how things will go.
 If this is your first contribution to Porter, we have a [tutorial] that walks you
 through how to setup your developer environment, make a change and test it.
 
-[tutorial]: https://porter.sh/contribute/tutorial/
+[tutorial]: https://getporter.org/contribute/tutorial/
 
 ## Code of Conduct
 
@@ -43,7 +44,7 @@ The Porter community is governed by our [Code of Conduct][coc].
 This includes but isn't limited to: the porter and related mixin repositories,
 slack, interactions on social media, project meetings, conferences and meetups.
 
-[coc]: https://porter.sh/src/CODE_OF_CONDUCT.md
+[coc]: https://getporter.org/src/CODE_OF_CONDUCT.md
 
 ## Find an issue
 
@@ -75,22 +76,30 @@ When you create your first pull request, add your name to the bottom of our
 [Contributors][contributors] list. Thank you for making Porter better! 🙇‍♀️
 
 [getporter.org/find-issue]: https://getporter.org/find-issue/
-[contributors]: https://porter.sh/src/CONTRIBUTORS.md                                          
+[contributors]: https://getporter.org/src/CONTRIBUTORS.md                                          
 [skeletor]: https://github.com/getporter/skeletor
-[mixin-dev-guide]: https://porter.sh/mixin-dev-guide/
-[good-first-issue]: https://porter.sh/board/good+first+issue
-[help-wanted]: https://porter.sh/board/help+wanted
-[board]: https://porter.sh/board
-[slack]: https://porter.sh/community#slack
-[roadmap]: https://porter.sh/src/README.md#roadmap
-[pep]: https://porter.sh/contribute/proposals/
+[mixin-dev-guide]: https://getporter.org/mixin-dev-guide/
+[good-first-issue]: https://getporter.org/board/good+first+issue
+[help-wanted]: https://getporter.org/board/help+wanted
+[board]: https://getporter.org/board
+[slack]: https://getporter.org/community#slack
+[roadmap]: https://getporter.org/src/README.md#roadmap
+[pep]: https://getporter.org/contribute/proposals/
 
 ## Which branch to use
 
-For issues that are in the v1 milestone, your branch should be against the **release/v1** branch.
-When you open the pull request, it should again target the release/v1 branch.
+Unless the issue specifically mentions a branch, please created your feature branch from the release/v1 branch.
 
-For everything else, your branch should be against the **main** branch.
+For example:
+
+```
+# Make sure you have the most recent changes to release/v1
+git checkout release/v1
+git pull
+
+# Create a branch based on release/v1 named MY_FEATURE_BRANCH
+git checkout -b MY_FEATURE_BRANCH
+```
 
 ## When to open a pull request
 
@@ -137,11 +146,9 @@ things, especially refactoring. If you need large refactoring for your change,
 chat with a maintainer first, then do it in a separate PR first without any
 functionality changes.
 
-🎳 Group related changes into commits will help us out a bunch when reviewing!
-For example, when you change dependencies and check in vendor, do that in a
-separate commit.
+🎳 Group related changes into separate commits to make it easier to review. 
 
-😅 Make requested changes in new commits. Please don't ammend or rebase commits
+😅 Make requested changes in new commits. Please don't amend or rebase commits
 that we have already reviewed. When your pull request is ready to merge, you can
 rebase your commits yourself, or we can squash when we merge. Just let us know
 what you are more comfortable with.
@@ -219,7 +226,7 @@ Porter! After your first pull request is merged, you will be invited to the
 [Contributors team] which you may choose to accept (or not). Joining the team lets
 you have issues in GitHub assigned to you.
 
-[canary]: https://porter.sh/install/#canary
+[canary]: https://getporter.org/install/#canary
 [Contributors team]: https://github.com/orgs/getporter/teams/contributors
 
 ### Follow-on PR
@@ -244,7 +251,7 @@ Our [contribution ladder][ladder] defines the roles and responsibilities for thi
 project and how to participate with the goal of moving from a user to a
 maintainer.
 
-[ladder]: https://porter.sh/src/CONTRIBUTION_LADDER.md
+[ladder]: https://getporter.org/src/CONTRIBUTION_LADDER.md
 
 # Developer Tasks
 
@@ -371,7 +378,7 @@ installed into your bin directory in the root of the repository. You can use
 
 ## Plugin Debugging
 
-If you are developing a [plugin](https://porter.sh/plugins/) and you want to
+If you are developing a [plugin](https://getporter.org/plugins/) and you want to
 debug it follow these steps:
 
 The plugin to be debugged should be compiled and placed in porters plugin path
@@ -413,7 +420,7 @@ a new blog post and then preview it:
 1. Go to /docs/content/blog and create a new file. Whatever you name the file
     will be the last part of the URL. For example a file named
     "porter-collaboration.md" will be located at
-    <https://porter.sh/blog/porter-collaboration/>.
+    <https://getporter.org/blog/porter-collaboration/>.
     
 1. At the top of the file copy and paste the frontmatter template below. The
     frontmatter is YAML that instucts the blogging software, Hugo, how to render the
@@ -480,7 +487,7 @@ The smoke and integration tests will run with telemetry enabled when the PORTER_
 
 ## Command Documentation
 
-Our commands are documented at <https://porter.sh/cli> and that documentation is
+Our commands are documented at <https://getporter.org/cli> and that documentation is
 generated by our CLI. You should regenerate that documentation when you change
 any files in **cmd/porter** by running `mage DocsGen` which is run every time
 you run `mage build`.
@@ -551,7 +558,7 @@ dependency injection and testing strategies.
   * **templates**: files that need to be compiled into the porter binary with
       version command.
 * **scripts**:
-  * **install**: Porter [installation](https://porter.sh/install) scripts
+  * **install**: Porter [installation](https://getporter.org/install) scripts
   * **setup-dco**: Set up automatic DCO signoff for the developer environment
 * **tests** have Go-based integration tests.
 
@@ -605,10 +612,17 @@ for maintainers.
 See the [CDN Setup Doc][cdn] for details on the services Porter uses to
 host and distribute its release binaries.
 
+## Custom Windows CI Agent
+
+Some of our tests need to run on Windows, like the Smoke Tests - Windows stage of our build pipeline.
+We use a custom Windows agent registered with Azure Pipelines that we build and maintain ourselves.
+See the [Custom Windows CI Agent] documentation for details on how the agent is created and configured.
+
 ## Releases
 
 Our [version strategy] explains how we version the project, when you should expect
 breaking changes in a release, and the process for the v1 release.
 
-[cdn]: https://porter.sh/src/infra/cdn.md
-[version strategy]: https://porter.sh/project/version-strategy/
+[cdn]: https://getporter.org/src/infra/cdn.md
+[version strategy]: https://getporter.org/project/version-strategy/
+[Custom Windows CI Agent]: https://getporter.org/src/infra/custom-windows-ci-agent.md

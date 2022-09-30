@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -105,7 +106,57 @@ func (e *Editor) SetValue(path string, value string) error {
 	cmd := yqlib.UpdateCommand{Command: "update", Path: path, Value: parsedValue, Overwrite: true}
 	err := e.yq.Update(e.node, cmd, true)
 	if err != nil {
-		return fmt.Errorf("could not update manifest path %q with value %q: %w", path, value, err)
+		return fmt.Errorf("could not update path %q with value %q: %w", path, value, err)
+	}
+
+	return nil
+}
+
+func (e *Editor) DeleteNode(path string) error {
+	cmd := yqlib.UpdateCommand{Command: "delete", Path: path}
+	err := e.yq.Update(e.node, cmd, true)
+	if err != nil {
+		return fmt.Errorf("could not delete path %q: %w", path, err)
+	}
+
+	return nil
+}
+
+// GetNode evaluates the specified yaml path to a single node.
+// Returns an error if a node isn't found, or more than one is found.
+func (e *Editor) GetNode(path string) (*yaml.Node, error) {
+	results, err := e.yq.Get(e.node, path)
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(results) {
+	case 0:
+		return nil, fmt.Errorf("no matching nodes found for %s", path)
+	case 1:
+		return results[0].Node, nil
+	default:
+		return nil, fmt.Errorf("multiple nodes matched the path %s", path)
+	}
+}
+
+// WalkNodes executes f for all yaml nodes found in path.
+// If an error is returned from f, the WalkNodes function will return the error and stop interating through
+// the rest of the nodes.
+func (e *Editor) WalkNodes(ctx context.Context, path string, f func(ctx context.Context, nc *yqlib.NodeContext) error) error {
+	nodes, err := e.yq.Get(e.node, path)
+	if err != nil {
+		return fmt.Errorf("failed to find nodes with path %s: %w", path, err)
+	}
+
+	for _, node := range nodes {
+		if node.Node.IsZero() {
+			continue
+		}
+		if err := f(ctx, node); err != nil {
+			return err
+		}
+
 	}
 
 	return nil

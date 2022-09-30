@@ -329,6 +329,8 @@ credentials:
 
 ### See Also
 * [porter credentials generate](/cli/porter_credentials_generate/)
+* [porter credentials create](/cli/porter_credentials_create/)
+* [porter credentials apply](/cli/porter_credentials_apply/)
 * [How Credentials Work](/how-credentials-work/)
 * [Wiring Credentials](/wiring/)
 
@@ -373,8 +375,8 @@ install:
     chart: bitnami/mysql
     version: 6.14.2
     set:
-      db.name: "{{ bundle.parameters.database-name }}"
-      db.user: "{{ bundle.parameters.mysql-user }}"
+      db.name: ${ bundle.parameters.database-name }
+      db.user: ${ bundle.parameters.mysql-user }
   outputs:
   - name: mysql-root-password
     secret: mydb-creds
@@ -400,22 +402,72 @@ are automatically defaulted, such as `dry-run`, `help`, `log`, and `status`. You
 actions unless you want to change the defaults.
 
 You may want to declare your custom action when the action does not make any changes, and its execution should not 
-be recorded (`stateless: true` and `modifies: false`). The `help` action is supported out-of-the-box by Porter
-and is automatically defaulted to this definition so you do not need to declare it. If you have an action that is 
-similar to `help`, but has a different name, you should declare it in the `customActions` section.
-
-```
+be recorded (`stateless: true` and `modifies: false`). An example of the usecase is:
+```yaml
 customActions:
   myhelp:
     description: "Print a special help message"
     stateless: true
     modifies: false
+
+myhelp:
+  exec:
+    command: ./help.sh
+    arguments:
+      - special-help
+    outputs:
+      - name: help-message
+        regex: "(.*)"
+
+outputs:
+  - name: connStr
+    description: "db connection string"
+    type: string
+    applyTo:
+      - install
 ```
 
 * `description`: Description of the action.
-* `stateless`: Indicates that the action is purely informational, that credentials are not required, 
-   and that Porter should not keep track of when this action was last executed.
+* `stateless`: Indicates that the action is purely informational and can be executed before the install action runs.
 * `modifies`: Indicates whether this action modifies resources managed by the bundle.
+
+In this example, the output `help-message` is not going to be recorded during bundle execution. This is determined by two criterias:
+  - `myhelp` is configured to be stateless and do not modify any bundle resources.
+  - there's no bundle level output applied to `myhelp` action
+
+If a custom action is stateful or modifies bundle resources, its output will be captured by default.
+
+Here's another example to demonstrate how to cature a custom action's output when it's stateless and makes no change to a bundle:
+```
+customActions:
+  myhelp:
+    description: "Return the product license information"
+    stateless: true
+    modifies: false
+
+myhelp:
+  exec:
+    command: ./help.sh
+    arguments:
+      - special-help
+    outputs:
+      - name: help-message
+        regex: "(.*)"
+
+outputs:
+  - name: connStr
+    description: "db connection string"
+    type: string
+    applyTo:
+      - install
+      - myhelp
+```
+
+By changing the bundle level output `connStr` to also apply to `myhelp`, the output from `myhelp` will be recorded now.
+
+As a side note, the `help` action is supported out-of-the-box by Porter
+and is automatically defaulted to this definition so you do not need to declare it. If you have an action that is 
+similar to `help`, but has a different name, you should declare it in the `customActions` section.
 
 [well-known-actions]: https://github.com/cnabio/cnab-spec/blob/master/804-well-known-custom-actions.md
 
@@ -464,7 +516,7 @@ used in [template expressions](/wiring), much like `parameters`, `credentials` a
 the `repository` and `digest` attributes. For example:
 
 ```
-image: "{{bundle.images.websvc.repository}}@{{bundle.images.websvc.digest}}"
+image: ${bundle.images.websvc.repository}@${bundle.images.websvc.digest}
 ```
 
 At runtime, these will be updated appropriately if a bundle has been [copied](/copy-bundles). Note that while `tag` is available, you should prefer the use of `digest`.
@@ -510,7 +562,7 @@ custom:
 ```
 
 You can access custom data at runtime using the `bundle.custom.KEY.SUBKEY` templating.
-For example, `{{ bundle.custom.more-custom-config.enabled}}` allows you to
+For example, `${ bundle.custom.more-custom-config.enabled}` allows you to
 access nested values from the custom section.
 
 Multiple custom values that were defined in the manifest can also be injected with new values during build time using the \--custom values tied to the `porter build` command. Currently only supports string values. You can use dot notation to specify a nested field:

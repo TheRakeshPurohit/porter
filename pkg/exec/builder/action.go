@@ -2,10 +2,12 @@ package builder
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/ioutil"
 
-	"get.porter.sh/porter/pkg/portercontext"
+	"get.porter.sh/porter/pkg/runtime"
+	"get.porter.sh/porter/pkg/tracing"
 	"get.porter.sh/porter/pkg/yaml"
 )
 
@@ -73,31 +75,32 @@ func unmarshalActionMap(actionMap map[string][]interface{}, builder BuildableAct
 //		 err := yaml.Unmarshal(contents, &action)
 //		 return &action, err
 //	 })
-func LoadAction(cxt *portercontext.Context, commandFile string, unmarshal func([]byte) (interface{}, error)) error {
-	contents, err := readInputFromStdinOrFile(cxt, commandFile)
+func LoadAction(ctx context.Context, cfg runtime.RuntimeConfig, commandFile string, unmarshal func([]byte) (interface{}, error)) error {
+	//lint:ignore SA4006 ignore unused ctx for now
+	ctx, span := tracing.StartSpan(ctx)
+	defer span.EndSpan()
+
+	contents, err := readInputFromStdinOrFile(cfg, commandFile)
 	if err != nil {
-		return err
+		return span.Error(err)
 	}
 
-	result, err := unmarshal(contents)
-	if cxt.Debug {
-		fmt.Fprintf(cxt.Err, "DEBUG Parsed Input:\n%#v\n", result)
-	}
+	_, err = unmarshal(contents)
 	if err != nil {
-		return fmt.Errorf("could not unmarshal input:\n %s: %w", string(contents), err)
+		return span.Error(fmt.Errorf("could not unmarshal input:\n %s: %w", string(contents), err))
 	}
 
 	return nil
 }
 
-func readInputFromStdinOrFile(cxt *portercontext.Context, commandFile string) ([]byte, error) {
+func readInputFromStdinOrFile(cfg runtime.RuntimeConfig, commandFile string) ([]byte, error) {
 	var b []byte
 	var err error
 	if commandFile == "" {
-		reader := bufio.NewReader(cxt.In)
+		reader := bufio.NewReader(cfg.In)
 		b, err = ioutil.ReadAll(reader)
 	} else {
-		b, err = cxt.FileSystem.ReadFile(commandFile)
+		b, err = cfg.FileSystem.ReadFile(commandFile)
 	}
 
 	if err != nil {

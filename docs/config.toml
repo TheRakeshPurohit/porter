@@ -1,4 +1,4 @@
-baseURL = "https://porter.sh/"
+baseURL = "https://getporter.org/"
 languageCode = "en-us"
 title = "Porter"
 theme = "porter"
@@ -47,6 +47,12 @@ pygmentsStyle = "friendly"
     weight = 11
     parent = "get-started"
   [[menu.main]]
+    name = "Migrate from v0"
+    url = "/storage-migrate/"
+    identifier = "migrate"
+    weight = 12
+    parent = "get-started"
+  [[menu.main]]
     name = "QuickStart"
     identifier = "quickstart"
     url = "/quickstart/"
@@ -81,6 +87,12 @@ pygmentsStyle = "friendly"
       url = "/quickstart/desired-state/"
       identifier = "quickstart-desired-state"
       weight = 5
+      parent = "quickstart"
+    [[menu.main]]
+      name = "Create a bundle"
+      url = "/bundle/create/"
+      identifier = "quickstart-create-a-bundle"
+      weight = 6
       parent = "quickstart"
   [[menu.main]]
     name = "Examples"
@@ -161,6 +173,19 @@ pygmentsStyle = "friendly"
       identifier = "end-users-configuration"
       weight = 30
       parent = "tasks-end-users"
+    [[menu.main]]
+      name = "Connect to Docker"
+      url = "/end-users/connect-docker/"
+      identifier = "end-users-connect-docker"
+      weight = 31
+      parent = "tasks-end-users"
+    [[menu.main]]
+      name = "Connect to a Registry"
+      url = "/end-users/connect-registry/"
+      identifier = "end-users-connect-registry"
+      weight = 32
+      parent = "tasks-end-users"
+
 
   # Bundle Authors
   [[menu.main]]
@@ -310,40 +335,46 @@ pygmentsStyle = "friendly"
       weight = 401
       parent = "porter-architecture"
     [[menu.main]]
+      name = "Security"
+      url = "/security-features/"
+      identifier = "porter-security"
+      weight = 402
+      parent = "porter-architecture"
+    [[menu.main]]
       name = "CNAB"
       url = "/cnab/"
       identifier = "architecture-cnab"
-      weight = 402
+      weight = 412
       parent = "porter-architecture"
     [[menu.main]]
       name = "Buildtime"
       url = "/architecture-buildtime"
       identifier = "architecture-buildtime"
-      weight = 403
+      weight = 413
       parent = "porter-architecture"
     [[menu.main]]
       name = "Runtime"
       url = "/architecture-runtime"
       identifier = "architecture-runtime"
-      weight = 404
+      weight = 414
       parent = "porter-architecture"
     [[menu.main]]
       name = "Invocation Images"
       url = "/build-image"
       identifier = "build-image"
-      weight = 405
+      weight = 415
       parent = "porter-architecture"
     [[menu.main]]
       name = "Credentials"
       url = "/credentials/"
       identifier = "credentials"
-      weight = 406
+      weight = 416
       parent = "porter-architecture"
     [[menu.main]]
       name = "Parameters"
       url = "/parameters/"
       identifier = "parameters"
-      weight = 407
+      weight = 417
       parent = "porter-architecture"
 
   # Operator

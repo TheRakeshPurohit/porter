@@ -15,14 +15,14 @@ var _ BundleAction = NewInstallOptions()
 // InstallOptions that may be specified when installing a bundle.
 // Porter handles defaulting any missing values.
 type InstallOptions struct {
-	*BundleActionOptions
+	*BundleExecutionOptions
 
 	// Labels to apply to the installation.
 	Labels []string
 }
 
 func (o InstallOptions) Validate(ctx context.Context, args []string, p *Porter) error {
-	err := o.BundleActionOptions.Validate(ctx, args, p)
+	err := o.BundleExecutionOptions.Validate(ctx, args, p)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,9 @@ func (o InstallOptions) GetActionVerb() string {
 }
 
 func NewInstallOptions() InstallOptions {
-	return InstallOptions{BundleActionOptions: &BundleActionOptions{}}
+	return InstallOptions{
+		BundleExecutionOptions: NewBundleExecutionOptions(),
+	}
 }
 
 // InstallBundle accepts a set of pre-validated InstallOptions and uses
@@ -59,7 +61,7 @@ func (p *Porter) InstallBundle(ctx context.Context, opts InstallOptions) error {
 	defer log.EndSpan()
 
 	// Figure out which bundle/installation we are working with
-	bundleRef, err := p.resolveBundleReference(ctx, opts.BundleActionOptions)
+	bundleRef, err := p.resolveBundleReference(ctx, opts.BundleReferenceOptions)
 	if err != nil {
 		return log.Error(err)
 	}
@@ -79,7 +81,7 @@ func (p *Porter) InstallBundle(ctx context.Context, opts InstallOptions) error {
 		return log.Error(err)
 	}
 
-	err = p.applyActionOptionsToInstallation(ctx, &i, opts.BundleActionOptions)
+	err = p.applyActionOptionsToInstallation(ctx, &i, opts.BundleExecutionOptions)
 	if err != nil {
 		return err
 	}
@@ -97,7 +99,7 @@ func (p *Porter) InstallBundle(ctx context.Context, opts InstallOptions) error {
 // Remember the parameters and credentials used with the bundle last.
 // Appends any newly specified parameters, parameter/credential sets to the installation record.
 // Users are expected to edit the installation record if they don't want that behavior.
-func (p *Porter) applyActionOptionsToInstallation(ctx context.Context, i *storage.Installation, opts *BundleActionOptions) error {
+func (p *Porter) applyActionOptionsToInstallation(ctx context.Context, i *storage.Installation, opts *BundleExecutionOptions) error {
 	// Record the parameters specified by the user, with flags taking precedence over parameter set values
 	err := opts.LoadParameters(ctx, p, opts.bundleRef.Definition)
 	if err != nil {
@@ -109,29 +111,14 @@ func (p *Porter) applyActionOptionsToInstallation(ctx context.Context, i *storag
 		return err
 	}
 
-	// Record the names of the parameter sets used
-	i.ParameterSets = append(i.ParameterSets, Unique(i.ParameterSets, opts.ParameterSets...)...)
-
-	// Record the names of the credential sets used
-	i.CredentialSets = append(i.CredentialSets, Unique(i.CredentialSets, opts.CredentialIdentifiers...)...)
+	// Record the names of the parameter and credential sets used if specified. Otherwise, reuse the previously specified sets.
+	// This should replace previously specified sets so that only what was just specified is used.
+	if len(opts.ParameterSets) > 0 {
+		i.ParameterSets = opts.ParameterSets
+	}
+	if len(opts.CredentialIdentifiers) > 0 {
+		i.CredentialSets = opts.CredentialIdentifiers
+	}
 
 	return nil
-}
-
-func Unique(existings []string, n ...string) []string {
-	var u []string
-	old := make(map[string]struct{})
-
-	for _, e := range existings {
-		old[e] = struct{}{}
-	}
-
-	for _, cs := range n {
-		if _, ok := old[cs]; ok {
-			continue
-		}
-		u = append(u, cs)
-	}
-
-	return u
 }

@@ -78,16 +78,19 @@ func TestLoadManifestWithDependencies(t *testing.T) {
 	m, err := LoadManifestFrom(context.Background(), c.Config, config.Name)
 	require.NoError(t, err, "could not load manifest")
 
-	assert.NotNil(t, m)
+	require.NotNil(t, m)
 	assert.Equal(t, []MixinDeclaration{{Name: "exec"}}, m.Mixins)
-	assert.Len(t, m.Install, 1)
+	require.Len(t, m.Install, 1)
 
 	installStep := m.Install[0]
 	description, _ := installStep.GetDescription()
-	assert.NotNil(t, description)
+	require.NotNil(t, description)
 
 	mixin := installStep.GetMixinName()
 	assert.Equal(t, "exec", mixin)
+
+	require.Len(t, m.Dependencies.Requires, 1, "expected one dependency")
+	assert.Equal(t, "getporter/azure-mysql:5.7", m.Dependencies.Requires[0].Bundle.Reference, "expected a v1 schema for the dependency delcaration")
 }
 
 func TestLoadManifestWithDependenciesInOrder(t *testing.T) {
@@ -100,11 +103,11 @@ func TestLoadManifestWithDependenciesInOrder(t *testing.T) {
 	require.NoError(t, err, "could not load manifest")
 	assert.NotNil(t, m)
 
-	nginxDep := m.Dependencies.RequiredDependencies[0]
+	nginxDep := m.Dependencies.Requires[0]
 	assert.Equal(t, "nginx", nginxDep.Name)
 	assert.Equal(t, "localhost:5000/nginx:1.19", nginxDep.Bundle.Reference)
 
-	mysqlDep := m.Dependencies.RequiredDependencies[1]
+	mysqlDep := m.Dependencies.Requires[1]
 	assert.Equal(t, "mysql", mysqlDep.Name)
 	assert.Equal(t, "getporter/azure-mysql:5.7", mysqlDep.Bundle.Reference)
 	assert.Len(t, mysqlDep.Parameters, 1)
@@ -175,6 +178,7 @@ func TestManifest_Validate_Name(t *testing.T) {
 }
 
 func TestManifest_Validate_SchemaVersion(t *testing.T) {
+	invalidVersionErr := schema.ErrInvalidSchemaVersion.Error()
 
 	t.Run("schemaVersion matches", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
@@ -185,10 +189,10 @@ func TestManifest_Validate_SchemaVersion(t *testing.T) {
 
 		err = m.Validate(cxt.Context, schema.CheckStrategyExact)
 		require.NoError(t, err)
-		assert.NotContains(t, cxt.GetError(), schema.ErrInvalidSchemaVersion.Error())
+		assert.NotContains(t, cxt.GetError(), invalidVersionErr)
 	})
 
-	t.Run("schemaVersion missing", func(t *testing.T) {
+	t.Run("schemaVersion missing, not required", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		cxt.UseFilesystem()
 
@@ -202,8 +206,41 @@ func TestManifest_Validate_SchemaVersion(t *testing.T) {
 
 		// Check that a warning is printed
 		// We aren't returning an error because we want to give it a chance to work first. Later we may turn this into a hard error after people have had time to migrate.
-		assert.Contains(t, cxt.GetError(), schema.ErrInvalidSchemaVersion.Error())
+		assert.Contains(t, cxt.GetError(), invalidVersionErr)
 	})
+}
+
+func TestManifest_ValidateMetadata(t *testing.T) {
+	// Make sure that we allow a range of versions
+	invalidVersionErr := schema.ErrInvalidSchemaVersion.Error()
+	testcases := []struct {
+		schemaVersion string
+		wantErr       string
+	}{
+		{wantErr: invalidVersionErr},
+		{schemaVersion: "1.0.0-alpha.1"},
+		{schemaVersion: "1.0.0-alpha.2", wantErr: invalidVersionErr},
+		{schemaVersion: "1.0.0"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.schemaVersion, func(t *testing.T) {
+			cxt := portercontext.NewTestContext(t)
+			m := Manifest{
+				SchemaVersion: tc.schemaVersion,
+				Name:          "mybuns",
+				Registry:      "localhost:5000",
+			}
+			err := m.validateMetadata(cxt.Context, schema.CheckStrategyExact)
+
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				assert.NotContains(t, cxt.GetError(), invalidVersionErr)
+			} else {
+				require.ErrorContains(t, err, invalidVersionErr)
+			}
+		})
+	}
 }
 
 func TestManifest_Validate_Dockerfile(t *testing.T) {
@@ -264,7 +301,7 @@ func TestSetDefaults(t *testing.T) {
 	t.Run("no registry or reference provided", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		m := Manifest{
-			SchemaVersion: SupportedSchemaVersion,
+			SchemaVersion: DefaultSchemaVersion.String(),
 			Name:          "mybun",
 			Version:       "1.2.3-beta.1",
 		}
@@ -275,7 +312,7 @@ func TestSetDefaults(t *testing.T) {
 	t.Run("bundle docker tag set on reference", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		m := Manifest{
-			SchemaVersion: SupportedSchemaVersion,
+			SchemaVersion: DefaultSchemaVersion.String(),
 			Name:          "mybun",
 			Version:       "1.2.3-beta.1",
 			Reference:     "getporter/mybun:v1.2.3",
@@ -286,13 +323,13 @@ func TestSetDefaults(t *testing.T) {
 		err = m.SetDefaults()
 		require.NoError(t, err)
 		assert.Equal(t, "getporter/mybun:v1.2.3", m.Reference)
-		assert.Equal(t, "getporter/mybun:e7a4fac8f425d76ed9a5baa3a188824b", m.Image)
+		assert.Equal(t, "getporter/mybun:porter-e7a4fac8f425d76ed9a5baa3a188824b", m.Image)
 	})
 
 	t.Run("bundle docker tag not set on reference", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		m := Manifest{
-			SchemaVersion: SupportedSchemaVersion,
+			SchemaVersion: DefaultSchemaVersion.String(),
 			Name:          "mybun",
 			Version:       "1.2.3-beta.1+15",
 			Reference:     "getporter/mybun",
@@ -303,13 +340,13 @@ func TestSetDefaults(t *testing.T) {
 		err = m.SetDefaults()
 		require.NoError(t, err)
 		assert.Equal(t, "getporter/mybun:v1.2.3-beta.1_15", m.Reference)
-		assert.Equal(t, "getporter/mybun:bcd1325906d287fb3b93500c8bfd2947", m.Image)
+		assert.Equal(t, "getporter/mybun:porter-bcd1325906d287fb3b93500c8bfd2947", m.Image)
 	})
 
 	t.Run("bundle reference includes registry with port", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		m := Manifest{
-			SchemaVersion: SupportedSchemaVersion,
+			SchemaVersion: DefaultSchemaVersion.String(),
 			Name:          "mybun",
 			Version:       "0.1.0",
 			Reference:     "localhost:5000/missing-invocation-image",
@@ -320,13 +357,13 @@ func TestSetDefaults(t *testing.T) {
 		err = m.SetDefaults()
 		require.NoError(t, err)
 		assert.Equal(t, "localhost:5000/missing-invocation-image:v0.1.0", m.Reference)
-		assert.Equal(t, "localhost:5000/missing-invocation-image:fea49a80fb6822ee71f71e2ce4a48a37", m.Image)
+		assert.Equal(t, "localhost:5000/missing-invocation-image:porter-fea49a80fb6822ee71f71e2ce4a48a37", m.Image)
 	})
 
 	t.Run("registry provided, no reference", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		m := Manifest{
-			SchemaVersion: SupportedSchemaVersion,
+			SchemaVersion: DefaultSchemaVersion.String(),
 			Name:          "mybun",
 			Version:       "1.2.3-beta.1",
 			Registry:      "getporter",
@@ -337,13 +374,13 @@ func TestSetDefaults(t *testing.T) {
 		err = m.SetDefaults()
 		require.NoError(t, err)
 		assert.Equal(t, "getporter/mybun:v1.2.3-beta.1", m.Reference)
-		assert.Equal(t, "getporter/mybun:b4b9ce8671aacb5a093574b04f9f87e1", m.Image)
+		assert.Equal(t, "getporter/mybun:porter-b4b9ce8671aacb5a093574b04f9f87e1", m.Image)
 	})
 
 	t.Run("registry provided with org, no reference", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		m := Manifest{
-			SchemaVersion: SupportedSchemaVersion,
+			SchemaVersion: DefaultSchemaVersion.String(),
 			Name:          "mybun",
 			Version:       "1.2.3-beta.1",
 			Registry:      "getporter/myorg",
@@ -354,13 +391,13 @@ func TestSetDefaults(t *testing.T) {
 		err = m.SetDefaults()
 		require.NoError(t, err)
 		assert.Equal(t, "getporter/myorg/mybun:v1.2.3-beta.1", m.Reference)
-		assert.Equal(t, "getporter/myorg/mybun:f4f017f099257ee41d0c05d5e3180f88", m.Image)
+		assert.Equal(t, "getporter/myorg/mybun:porter-f4f017f099257ee41d0c05d5e3180f88", m.Image)
 	})
 
 	t.Run("registry and reference provided", func(t *testing.T) {
 		cxt := portercontext.NewTestContext(t)
 		m := Manifest{
-			SchemaVersion: SupportedSchemaVersion,
+			SchemaVersion: DefaultSchemaVersion.String(),
 			Name:          "mybun",
 			Version:       "1.2.3-beta.1",
 			Registry:      "myregistry/myorg",
@@ -375,7 +412,7 @@ func TestSetDefaults(t *testing.T) {
 		err = m.SetDefaults()
 		require.NoError(t, err)
 		assert.Equal(t, "getporter/org/mybun:v1.2.3", m.Reference)
-		assert.Equal(t, "getporter/org/mybun:93d4bfba61358eca91debf6dd4ddc61f", m.Image)
+		assert.Equal(t, "getporter/org/mybun:porter-93d4bfba61358eca91debf6dd4ddc61f", m.Image)
 	})
 }
 
@@ -547,6 +584,31 @@ func TestValidateOutputDefinition_defaultFailsValidation(t *testing.T) {
 }
 
 func TestValidateImageMap(t *testing.T) {
+	t.Run("with valid image digest, valid repository format and valid tag", func(t *testing.T) {
+		mi := MappedImage{
+			Repository: "getporter/myserver",
+			Digest:     "sha256:8f1133d81f1b078c865cdb11d17d1ff15f55c449d3eecca50190eed0f5e5e26f",
+			Tag:        "latest",
+		}
+
+		err := mi.Validate()
+		assert.NoError(t, err)
+		ref, err := mi.ToOCIReference()
+		require.NoError(t, err)
+		require.Equal(t, "getporter/myserver@sha256:8f1133d81f1b078c865cdb11d17d1ff15f55c449d3eecca50190eed0f5e5e26f", ref.String(), "failed to convert image map to its OCI reference")
+	})
+	t.Run("with valid repository format and valid tag", func(t *testing.T) {
+		mi := MappedImage{
+			Repository: "getporter/myserver",
+			Tag:        "v0.1.0",
+		}
+
+		err := mi.Validate()
+		assert.NoError(t, err)
+		ref, err := mi.ToOCIReference()
+		require.NoError(t, err)
+		require.Equal(t, "getporter/myserver:v0.1.0", ref.String(), "failed to convert image map to its OCI reference")
+	})
 	t.Run("with both valid image digest and valid repository format", func(t *testing.T) {
 		mi := MappedImage{
 			Repository: "getporter/myserver",
@@ -554,8 +616,10 @@ func TestValidateImageMap(t *testing.T) {
 		}
 
 		err := mi.Validate()
-		// No error should be returned
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		ref, err := mi.ToOCIReference()
+		require.NoError(t, err)
+		require.Equal(t, "getporter/myserver@sha256:8f1133d81f1b078c865cdb11d17d1ff15f55c449d3eecca50190eed0f5e5e26f", ref.String(), "failed to convert image map to its OCI reference")
 	})
 
 	t.Run("with no image digest supplied and valid repository format", func(t *testing.T) {
@@ -564,8 +628,10 @@ func TestValidateImageMap(t *testing.T) {
 		}
 
 		err := mi.Validate()
-		// No error should be returned
 		assert.NoError(t, err)
+		ref, err := mi.ToOCIReference()
+		require.NoError(t, err)
+		require.Equal(t, "getporter/myserver", ref.String(), "failed to convert image map to its OCI reference")
 	})
 
 	t.Run("with valid image digest but invalid repository format", func(t *testing.T) {
@@ -576,6 +642,8 @@ func TestValidateImageMap(t *testing.T) {
 
 		err := mi.Validate()
 		assert.Error(t, err)
+		_, err = mi.ToOCIReference()
+		assert.ErrorContains(t, err, "failed to parse named reference")
 	})
 
 	t.Run("with invalid image digest format", func(t *testing.T) {
@@ -586,6 +654,8 @@ func TestValidateImageMap(t *testing.T) {
 
 		err := mi.Validate()
 		assert.Error(t, err)
+		_, err = mi.ToOCIReference()
+		assert.ErrorContains(t, err, "failed to create a new reference with digest for repository")
 	})
 }
 
@@ -751,6 +821,27 @@ func TestParameterDefinition_UpdateApplyTo(t *testing.T) {
 
 			pd.UpdateApplyTo(m)
 			require.Equal(t, tc.wantApplyTo, pd.ApplyTo)
+		})
+	}
+}
+
+func TestManifest_getTemplatePrefix(t *testing.T) {
+	testcases := []struct {
+		schemaVersion string
+		wantPrefix    string
+	}{
+		{"", ""},
+		{"1.0.0-alpha.1", ""},
+		{"1.0.0-alpha.2", TemplateDelimiterPrefix},
+		{"1.0.0", TemplateDelimiterPrefix},
+		{"1.1.0", TemplateDelimiterPrefix},
+		{"3.0.0", TemplateDelimiterPrefix},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.schemaVersion, func(t *testing.T) {
+			m := Manifest{SchemaVersion: tc.schemaVersion}
+			prefix := m.GetTemplatePrefix()
+			require.Equal(t, tc.wantPrefix, prefix)
 		})
 	}
 }

@@ -36,9 +36,6 @@ const (
 type CommandBuilder func(ctx context.Context, name string, arg ...string) *exec.Cmd
 
 type Context struct {
-	Debug              bool
-	DebugPlugins       bool
-	verbose            bool
 	environ            map[string]string
 	FileSystem         aferox.Aferox
 	In                 io.Reader
@@ -138,8 +135,13 @@ func (c *Context) makeLogEncoding() zapcore.EncoderConfig {
 }
 
 type LogConfiguration struct {
-	LogToFile               bool
-	LogDirectory            string
+	// Verbosity is the threshold for printing messages to the console.
+	Verbosity zapcore.Level
+
+	LogToFile    bool
+	LogDirectory string
+
+	// LogLevel is the threshold for writing messages to the log file.
 	LogLevel                zapcore.Level
 	StructuredLogs          bool
 	TelemetryEnabled        bool
@@ -221,7 +223,7 @@ func (c *Context) makeConsoleLogger() zapcore.Core {
 		encoding.LevelKey = ""
 	}
 	consoleEncoder := zapcore.NewConsoleEncoder(encoding)
-	return zapcore.NewCore(consoleEncoder, zapcore.AddSync(stderr), c.logCfg.LogLevel)
+	return zapcore.NewCore(consoleEncoder, zapcore.AddSync(stderr), c.logCfg.Verbosity)
 }
 
 func (c *Context) configureFileLog(dir string) (zapcore.Core, error) {
@@ -314,14 +316,6 @@ func getEnviron() map[string]string {
 		environ[key] = value
 	}
 	return environ
-}
-
-func (c *Context) SetVerbose(value bool) {
-	c.verbose = value
-}
-
-func (c *Context) IsVerbose() bool {
-	return c.Debug || c.verbose
 }
 
 // Environ returns a copy of strings representing the environment,
@@ -500,6 +494,9 @@ func (c *Context) WriteMixinOutputToFile(filename string, bytes []byte) error {
 }
 
 // SetSensitiveValues sets the sensitive values needing masking on output/err streams
+// WARNING: This does not work if you are writing to the TraceLogger.
+// See https://github.com/getporter/porter/issues/2256
+// Only use this when you are calling fmt.Fprintln, not log.Debug, etc.
 func (c *Context) SetSensitiveValues(vals []string) {
 	if len(vals) > 0 {
 		out := NewCensoredWriter(c.Out)

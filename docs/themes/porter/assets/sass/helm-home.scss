@@ -95,6 +95,11 @@ nav.home-nav {
     .txt-github {
       color: white;
       font-size: 1.5rem;
+
+      @include mobile {
+        margin: 0 !important;
+        padding: 0 !important;
+      }
     }
 
     .btn-github {
@@ -185,6 +190,10 @@ nav.home-nav {
     box-shadow: none;
     border-radius: 20px;
 
+    @include mobile {
+      width: 63rem !important;
+    }
+
     .card-img-top {
       color: #a5d6d0;
     }
@@ -227,6 +236,16 @@ nav.home-nav {
       margin: 2rem 0;
       padding-top: 1em;
     }
+
+
+  @include mobile{
+    h2 {
+      font-size:2rem !important;
+    }
+    p, .why-porter, .why-porter li {
+      font-size: 1.2rem !important;
+    }
+  }
 
     p, ul, li {
       color: white;
@@ -316,6 +335,13 @@ nav.home-nav {
         font-size: 0.6em;
         margin-left: -5em;
       }
+
+      @include mobile {
+        font-size: 1.7rem;
+        img{
+          width: 65px ;
+        }
+    }
     }
 
     h3:not(:first-child) {
@@ -325,6 +351,15 @@ nav.home-nav {
     .columns {
       position: relative;
       padding: 30px;
+
+      @include mobile {
+        padding: 10px;
+
+        figcaption + img {
+          padding: 10px;
+          border-radius: 2em;
+        }
+      }
     }
 
     img {
@@ -342,6 +377,10 @@ nav.home-nav {
 
       code {
         border: none;
+      }
+
+      @include mobile {
+        font-size: 1.2rem;
       }
     }
 
@@ -370,6 +409,12 @@ nav.home-nav {
       height: 10px;
       transform: skew(-12deg) translateX(-50%);
       background: rgba(57,190,197,0.5);
+    }
+  }
+
+  .helm-features + .container{
+    @include mobile{
+      padding-bottom: 75px;
     }
   }
 
@@ -403,10 +448,26 @@ nav.home-nav {
     }
   }
 
+  .helm-quotes {
+    background-color: white;
+    border-radius: 25px;
+    color: $dark2;
+    background: linear-gradient( 0deg, #fff, #F7F7F7);
+
+    h2, p {
+      color: $darkblue;
+    }
+
+     a {
+        color: $red;
+        text-decoration: underline;
+      }
+  }
+
   .helm-community {
     background-color: white;
-    padding-top: 50px;
     padding-bottom: 100px;
+    border-radius: 25px;
     color: $darkblue;
     background: linear-gradient( 0deg, #fff, #F7F7F7);
 
@@ -415,18 +476,24 @@ nav.home-nav {
     }
 
     h2 {
-      margin-bottom: 0.5em;
-
-      & + p {
-        margin-bottom: 4.5rem;
-      }
+      margin-bottom: 0.3em;
+      font-size: 3rem;
     }
 
     .helm-community-links {
       ul {
-        background-color: white;
-        padding: 1.5em 2.25em;
-        border-radius: 1em;
+
+        @include mobile {
+          padding: 0 !important;
+          margin: 0 !important;
+          text-align: left !important;
+        }
+
+        .btn-section {
+          display: inline-block;
+          padding: 10px 20px 10px 20px;
+          border-radius: 20px;
+        }
 
         li {
           font-size: 1.5rem;
@@ -439,41 +506,55 @@ nav.home-nav {
 
           a {
             color: $dark2;
-            border-bottom: 3px solid $blue;
             text-decoration: none;
+            background-image: linear-gradient(to right, #A7BFE8 0%, #6190E8 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 0.3em;
+            padding: 15px 10px;
+            background-position: 0 88%;
+            transition: background-size 0.1s ease-in-out;
 
             &:hover {
-              color: $blue;
-              border-color: $lightblue;
+              // color: $blue;
+              // border-color: $lightblue;
+              background-size: 100% 80%;
+              color: white;
             }
           }
 
-          .fa {
-            color: $blue;
-            font-size: 2rem;
-            width: 1.25em;
-            padding-right: 0em;
-            position: absolute;
-            left: 0;
-            top: 0.525em;
+          .fa-solid, .fa-brands{
+            font-size: 1.5rem;
           }
         }
       }
     }
+    .topbar {
+      height: 20px;
+      background-color: #f8cc88;
+    }
+    .topbar--1 {
+      height: 20px;
+      background-color: $red;
+    }
+
+    .text-content {
+       padding: 2rem;
+    }
 
     .helm-community-blocks {
       section {
-        border: 1px solid $darkblue;
-        border-radius: 1rem;
+        border: 25px solid white;
+        border-bottom: none;
+        border-top: none;
         margin: 0 0 2em;
-        padding: 1.25rem 1.5rem;
         min-height: 125px;
+        background-color: ghostwhite;
         position: relative;
 
         h4 {
           color: $darkblue;
           font-size: 1.5em;
-          @include CBold;
+          @include CBlack;
           margin: -0.25em 0 0.667em;
         }
 
@@ -483,7 +564,9 @@ nav.home-nav {
         }
 
         a {
-          color: $dark2;
+          color: $red;
+          text-decoration: underline;
+          font-weight: 600;
         }
 
         iframe {
@@ -626,6 +709,11 @@ nav.home-nav {
     color: $blue2;
     text-decoration:none !important ;
   }
+
+  @include mobile {
+    padding: 20px 20px 30px !important;
+    font-size: 1rem;
+  }
 }
 
 @media only screen and (min-device-width: $mobile-maximum-width + 1) {
@@ -692,7 +780,8 @@ nav.home-nav {
     img,
     p {
       float: none;
-      margin: 1.5rem auto;
+      padding: 0;
+      margin: 1.5rem 0 !important;
     }
 
     img {

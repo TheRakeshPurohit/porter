@@ -54,6 +54,9 @@ const (
 	// EnvPorterInstallationName is the name of the environment variable which is injected into the
 	// invocation image, containing the name of the installation.
 	EnvPorterInstallationName = "PORTER_INSTALLATION_NAME"
+
+	// DefaultVerbosity is the default value for the --verbosity flag.
+	DefaultVerbosity = "info"
 )
 
 // These are functions that afero doesn't support, so this lets us stub them out for tests to set the
@@ -92,8 +95,13 @@ type Config struct {
 
 // New Config initializes a default porter configuration.
 func New() *Config {
+	return NewFor(portercontext.New())
+}
+
+// NewFor initializes a porter configuration, using an existing porter context.
+func NewFor(pCtx *portercontext.Context) *Config {
 	return &Config{
-		Context:    portercontext.New(),
+		Context:    pCtx,
 		Data:       DefaultDataStore(),
 		DataLoader: LoadFromEnvironment(),
 	}
@@ -101,6 +109,7 @@ func New() *Config {
 
 func (c *Config) NewLogConfiguration() portercontext.LogConfiguration {
 	return portercontext.LogConfiguration{
+		Verbosity:               c.GetVerbosity().Level(),
 		StructuredLogs:          c.Data.Logs.Structured,
 		LogToFile:               c.Data.Logs.LogToFile,
 		LogDirectory:            filepath.Join(c.porterHome, "logs"),
@@ -220,24 +229,23 @@ func (c *Config) SetPorterPath(path string) {
 	c.porterPath = path
 }
 
-func (c *Config) GetPorterPath() (string, error) {
+func (c *Config) GetPorterPath(ctx context.Context) (string, error) {
 	if c.porterPath != "" {
 		return c.porterPath, nil
 	}
 
+	log := tracing.LoggerFromContext(ctx)
 	porterPath, err := getExecutable()
 	if err != nil {
-		return "", fmt.Errorf("could not get path to the executing porter binary: %w", err)
+		return "", log.Error(fmt.Errorf("could not get path to the executing porter binary: %w", err))
 	}
 
 	// We try to resolve back to the original location
 	hardPath, err := evalSymlinks(porterPath)
 	if err != nil { // if we have trouble resolving symlinks, skip trying to help people who used symlinks
-		fmt.Fprintln(c.Err, fmt.Errorf("WARNING could not resolve %s for symbolic links\n: %w", porterPath, err))
+		log.Error(fmt.Errorf("WARNING could not resolve %s for symbolic links: %w", porterPath, err))
 	} else if hardPath != porterPath {
-		if c.Debug {
-			fmt.Fprintf(c.Err, "Resolved porter binary from %s to %s\n", porterPath, hardPath)
-		}
+		log.Debugf("Resolved porter binary from %s to %s", porterPath, hardPath)
 		porterPath = hardPath
 	}
 
@@ -306,6 +314,11 @@ func (c *Config) SetExperimentalFlags(flags experimental.FeatureFlags) {
 // Use this instead of Config.Data.BuildDriver directly.
 func (c *Config) GetBuildDriver() string {
 	return BuildDriverBuildkit
+}
+
+// GetVerbosity converts the user-specified verbosity flag into a LogLevel enum.
+func (c *Config) GetVerbosity() LogLevel {
+	return ParseLogLevel(c.Data.Verbosity)
 }
 
 // Load loads the configuration file, rendering any templating used in the config file
@@ -395,8 +408,8 @@ func (c *Config) loadFinalPass(ctx context.Context, resolveSecret func(ctx conte
 // as environment variables suitable for a remote Porter actor, such as a mixin
 // or plugin. Only a subset of values are exported, such as tracing and logging,
 // and not plugin configuration (since it's not relevant when running a plugin
-// and may contain sensitive data). For example, if Config.Debug is true, it
-// would return PORTER_DEBUG=true in the resulting set of environment variables.
+// and may contain sensitive data). For example, if Config.Data.Logs is set to warn, it
+// would return PORTER_LOGS_LEVEL=warn in the resulting set of environment variables.
 // This is used to pass config from porter to a mixin or plugin.
 func (c *Config) ExportRemoteConfigAsEnvironmentVariables() []string {
 	if c.viper == nil {
@@ -404,7 +417,7 @@ func (c *Config) ExportRemoteConfigAsEnvironmentVariables() []string {
 	}
 
 	// the set of config that is relevant to remote actors
-	keepPrefixes := []string{"debug", "logs", "telemetry"}
+	keepPrefixes := []string{"verbosity", "logs", "telemetry"}
 
 	var env []string
 	for _, key := range c.viper.AllKeys() {

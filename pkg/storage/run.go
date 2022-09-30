@@ -132,20 +132,29 @@ func (r Run) ShouldRecord() bool {
 	// Assume all actions modify bundle resources, and should be recorded.
 	stateful := true
 	modifies := true
+	hasOutput := false
 
 	if action, err := r.Bundle.GetAction(r.Action); err == nil {
 		modifies = action.Modifies
 		stateful = !action.Stateless
 	}
 
-	return modifies || stateful
+	bun := cnab.ExtendedBundle{Bundle: r.Bundle}
+	for _, outputDef := range r.Bundle.Outputs {
+		if outputDef.AppliesTo(r.Action) && !bun.IsInternalOutput(outputDef.Definition) {
+			hasOutput = true
+			break
+		}
+	}
+
+	return modifies || stateful || hasOutput
 }
 
 // ToCNAB associated with the Run.
 func (r Run) ToCNAB() cnab.Claim {
 	return cnab.Claim{
 		// CNAB doesn't have the concept of namespace, so we smoosh them together to make a unique name
-		SchemaVersion:   cnab.CNABSchemaVersion(),
+		SchemaVersion:   cnab.ClaimSchemaVersion(),
 		ID:              r.ID,
 		Installation:    r.Namespace + "/" + r.Installation,
 		Revision:        r.Revision,
