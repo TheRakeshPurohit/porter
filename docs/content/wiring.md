@@ -3,7 +3,7 @@ title: Parameters, Credentials, Outputs, and Images in Porter
 description: How to wire parameters, credentials and outputs into steps
 ---
 
-In the Porter manifest, you can declare both parameters and credentials. In addition to providing a mechanism for declaring parameters and credentials at the bundle level, Porter provides a way to declare how each of these are provided to [mixins][mixin-architecture]. This mechanism is also applicable to declaring how output from one mixin can be passed to another, as well as how to consume parameters, credentials and outputs from bundle dependencies. Finally, you can also use this technique to reference images defined in the `images` section of the manifest.
+In the Porter manifest, you can declare both parameters and credentials. In addition to providing a mechanism for declaring parameters and credentials at the bundle level, Porter provides a way to declare how each of these are provided to mixins. This mechanism is also applicable to declaring how output from one mixin can be passed to another, as well as how to consume parameters, credentials and outputs from bundle dependencies. Finally, you can also use this technique to reference images defined in the `images` section of the manifest.
 
 * [Wiring Installation Metadata](#wiring-installation-metadata)
 * [Parameters](#parameters)
@@ -20,14 +20,14 @@ In the Porter manifest, you can declare both parameters and credentials. In addi
 
 ## Wiring Installation Metadata
 
-The installation name is available at runtime as `{{ installation.name }}`. In the example below, we install a helm chart
+The installation name is available at runtime as `${ installation.name }`. In the example below, we install a helm chart
 and set the release name to the installation name of the bundle:
 
 ```yaml
 install:
   helm3:
     description: Install myapp
-    name: "{{ installation.name }}"
+    name: ${ installation.name }
     chart: charts/myapp
 ```
 
@@ -51,16 +51,25 @@ You can also provide any other attributes, as specified by the CNAB [parameters]
   default: "wordpress"
 ```
 
+If you decide to use the default parameter field, you must set it as the empty value. 
+However, it must be passed in as an empty type. For example, for an empty string, pass in `""` as the default, or for an object use `{}`:
+
+```yaml
+- name: command
+  type: object
+  default: {}
+```
+
 ### File Parameters
 
 Porter also enables the use of file parameters in a bundle.
 
-For instance, a bundle might declare a parameter `mytar` of type `file`, to exist at `/root/mytar` in the execution environment:
+For instance, a bundle might declare a parameter `mytar` of type `file`, to exist at `/cnab/app/mytar` in the execution environment:
 
 ```yaml
 - name: mytar
   type: file
-  path: /root/mytar
+  path: /cnab/app/mytar
 ```
 
 which can be used in a step like `install`:
@@ -71,7 +80,7 @@ install:
       description: "Install"
       command: bash
       flags:
-        c: tar zxvf /root/mytar
+        c: tar zxvf /cnab/app/mytar
 ```
 
 The syntax to pass a parameter to porter is the same for both regular and file parameters:
@@ -80,11 +89,11 @@ The syntax to pass a parameter to porter is the same for both regular and file p
 $ porter install --param mytar=./my.tar.gz
 ```
 
-See the [Parameters section of the Author Bundles doc](/author-bundles#parameters) for additional examples and configuration.
+See the [Parameters section of the Author Bundles doc](/docs/bundle/manifest/#parameters) for additional examples and configuration.
 
 ## Wiring Parameters
 
-Once a parameter has been declared in the `porter.yaml`, Porter provides a simple mechanism for specifying how the parameter value should be wired into the mixin. To reference a parameter in the bundle, you use a notation of the form `"{{ bundle.parameters.PARAM_NAME }}"`. This can be used anywhere within step definition. For example, to use the `database_name` parameter defined above in the `set` block of the helm mixin:
+Once a parameter has been declared in the `porter.yaml`, Porter provides a simple mechanism for specifying how the parameter value should be wired into the mixin. To reference a parameter in the bundle, you use a notation of the form `${ bundle.parameters.PARAM_NAME }`. This can be used anywhere within step definition. For example, to use the `database_name` parameter defined above in the `set` block of the helm mixin:
 
 ```yaml
 install:
@@ -95,7 +104,7 @@ install:
     version: 6.14.2
     replace: true
     set:
-      db.name: "{{ bundle.parameters.database-name }}"
+      db.name: ${ bundle.parameters.database-name }
       db.user: "root"
 ```
 
@@ -110,7 +119,7 @@ parameters:
 install:
   - description: "Install Hello World"
     exec:
-      command: "{{ bundle.parameters.command }}"
+      command: ${ bundle.parameters.command }
 ```
 
 This syntax is used in dictionary, as above, or in a list:
@@ -126,7 +135,7 @@ install:
     exec:
       command: bash
       flags:
-        c: "{{ bundle.parameters.command }}"
+        c: ${ bundle.parameters.command }
 ```
 
 NOTE: These references must be quoted, as in the examples above.
@@ -136,14 +145,14 @@ See [Parameters][parameters] to learn how parameters are passed in to Porter pri
 
 ## Credentials
 
-Credentials are defined in the `porter.yaml` with a YAML block of one more credential definitions. You can declare that a credential should be placed in a path within the invocation image or into an environment variable.
+Credentials are defined in the `porter.yaml` with a YAML block of one more credential definitions. You can declare that a credential should be placed in a path within the bundle image or into an environment variable.
 
 To declare a file injection:
 
 ```yaml
 credentials:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 ```
 
 To declare an environment variable injection:
@@ -156,7 +165,7 @@ credentials:
 
 ## Wiring Credentials
 
-The same mechanism for declaring how to use a parameter can be used for credentials. To declare a credential usage, references are defined with the following syntax: `"{{ bundle.credentials.CREDENTIAL_NAME}}"`.
+The same mechanism for declaring how to use a parameter can be used for credentials. To declare a credential usage, references are defined with the following syntax: `${ bundle.credentials.CREDENTIAL_NAME}`.
 
 When the bundle is executed, the Porter runtime will locate the parameter definition in the `porter.yaml` to determine where the parameter value has been stored. The Porter runtime will then rewrite the YAML block before it is passed to the mixin. See [Credentials][credentials] to learn how credentials work.
 
@@ -173,13 +182,13 @@ install:
       name: demo-mysql-azure-porter-demo-wordpress
       resourceGroup: "porter-test"
       parameters:
-        administratorLogin: "{{ bundle.parameters.mysql_user}}"
-        administratorLoginPassword: "{{ bundle.parameters.mysql_password }}"
+        administratorLogin: ${ bundle.parameters.mysql_user}
+        administratorLoginPassword: ${ bundle.parameters.mysql_password }
         location: "eastus"
         serverName: "mysql-jeremy-porter-test-jan-2018"
         version: "5.7"
         sslEnforcement: "Disabled"
-        databaseName: "{{ bundle.parameters.database_name }}"
+        databaseName: ${ bundle.parameters.database_name }
       outputs:
         - name: "MYSQL_URL"
           key: "MYSQL_HOST"
@@ -189,7 +198,7 @@ In this example, a new output will be created named `MYSQL_URL`. The Azure mixin
 
 ## Wiring Outputs
 
-Once an output has been declared, it can be referenced in the same way as parameters and credentials. Outputs are referenced with the syntax `"{{ bundle.outputs.OUTPUT_NAME }}"`
+Once an output has been declared, it can be referenced in the same way as parameters and credentials. Outputs are referenced with the syntax `${ bundle.outputs.OUTPUT_NAME }`
 
 For example, given the install step above, we can use the `MYSQL_URL` with the helm mixin in the following way:
 
@@ -202,10 +211,10 @@ For example, given the install step above, we can use the `MYSQL_URL` with the h
       set:
         mariadb.enabled: "false"
         externalDatabase.port: 3306
-        externalDatabase.host: "{{  bundle.outputs.MYSQL_URL }}"
-        externalDatabase.user: "{{ bundle.parameters.mysql_user }}"
-        externalDatabase.password: "{{ bundle.parameters.mysql_password }}"
-        externalDatabase.database: "{{ bundle.parameters.database_name }}"
+        externalDatabase.host: ${  bundle.outputs.MYSQL_URL }
+        externalDatabase.user: ${ bundle.parameters.mysql_user }
+        externalDatabase.password: ${ bundle.parameters.mysql_password }
+        externalDatabase.database: ${ bundle.parameters.database_name }
 ```
 
 Just like in the case of credentials and parameters, the value of the `bundle.outputs.MYSQL_URL` reference will be rewritten in the YAML before the helm mixin is invoked.
@@ -254,7 +263,7 @@ install:
     description: Install myapp
     chart: charts/myapp
     set:
-      featureA: "{{ bundle.custom.myApp.featureFlags.featureA }}"
+      featureA: ${ bundle.custom.myApp.featureFlags.featureA }
 ```
 
 ## Wiring Images
@@ -280,13 +289,13 @@ These images will be used to build the `bundle.json` images section, but can als
       chart: bitnami/wordpress
       version: "9.9.3"
       set:
-        image.repository: "{{ bundle.images.ALIAS.repository }}"
-        image.tag: "{{ bundle.images.ALIAS.tag }}"
+        image.repository: ${ bundle.images.ALIAS.repository }
+        image.tag: ${ bundle.images.ALIAS.tag }
 ```
 
 ## Wiring Dependency Outputs
 
-You can reference outputs from a dependency defined in your bundle using the syntax `{{ bundle.dependencies.DEPENDENCY.outputs.OUTPUT }}`.
+You can reference outputs from a dependency defined in your bundle using the syntax `${ bundle.dependencies.DEPENDENCY.outputs.OUTPUT }`.
 
 For example, consider a bundle that creates a mysql defined with the following `porter.yaml`:
 
@@ -303,7 +312,7 @@ mixins:
 
 credentials:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 
 parameters:
 - name: database-name
@@ -322,8 +331,8 @@ install:
     version: 6.14.2
     replace: true
     set:
-      db.name: "{{ bundle.parameters.database-name }}"
-      db.user: "{{ bundle.parameters.mysql-user }}"
+      db.name: ${ bundle.parameters.database-name }
+      db.user: ${ bundle.parameters.mysql-user }
     outputs:
     - name: mysql-root-password
       secret: porter-ci-mysql
@@ -347,15 +356,17 @@ mixins:
         url: "https://charts.bitnami.com/bitnami"
 
 dependencies:
-  - name: mysql
-    reference: getporter/mysql:v0.1.3
-    parameters:
-      database_name: wordpress
-      mysql_user: wordpress
+  requires:
+    - name: mysql
+      bundle:
+        reference: getporter/mysql:v0.1.3
+      parameters:
+        database_name: wordpress
+        mysql_user: wordpress
 
 credentials:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 
 parameters:
 - name: wordpress-name
@@ -375,19 +386,19 @@ parameters:
 install:
 - helm3:
   description: "Install Wordpress"
-  name: "{{ bundle.parameters.wordpress-name }}"
+  name: ${ bundle.parameters.wordpress-name }
   chart: bitnami/wordpress
   version: "9.9.3"  
-  namespace: "{{ bundle.parameters.namespace }}"
+  namespace: ${ bundle.parameters.namespace }
   replace: true
   set:
-    wordpressPassword: "{{ bundle.parameters.wordpress-password }}"
-    externalDatabase.password: "{{ bundle.dependencies.mysql.outputs.mysql-password }}"
+    wordpressPassword: ${ bundle.parameters.wordpress-password }
+    externalDatabase.password: ${ bundle.dependencies.mysql.outputs.mysql-password }
     externalDatabase.port: 3306
     mariadb.enabled: false
   outputs:
     - name: wordpress-password
-      secret: "{{ bundle.parameters.wordpress-name }}"
+      secret: ${ bundle.parameters.wordpress-name }
       key: wordpress-password
 ```
 
@@ -397,19 +408,19 @@ The wordpress bundle declares a dependency on the `mysql` bundle, which we saw a
 install:
 - helm3:
   description: "Install Wordpress"
-  name: "{{ bundle.parameters.wordpress-name }}"
+  name: ${ bundle.parameters.wordpress-name }
   chart: bitnami/wordpress
   version: "9.9.3"      
-  namespace: "{{ bundle.parameters.namespace }}"
+  namespace: ${ bundle.parameters.namespace }
   replace: true
   set:
-    wordpressPassword: "{{ bundle.parameters.wordpress-password }}"
-    externalDatabase.password: "{{ bundle.dependencies.mysql.outputs.mysql-password }}"
+    wordpressPassword: ${ bundle.parameters.wordpress-password }
+    externalDatabase.password: ${ bundle.dependencies.mysql.outputs.mysql-password }
     externalDatabase.port: 3306
     mariadb.enabled: false
 ```
 
-For more information on how dependencies are handled, refer to the [dependencies](/dependencies) documentation.
+For more information on how dependencies are handled, refer to the [dependencies](/docs/development/authoring-a-bundle/working-with-dependencies/) documentation.
 
 ## Combining References
 
@@ -419,14 +430,13 @@ It is possible to reference multiple parameters, credentials and/or outputs in a
 install:
 - helm3:
     description: "Install Java App"
-    name: "{{ bundle.parameters.cool-app}}"
+    name: ${ bundle.parameters.cool-app}
     chart: bitnami/wordpress
     version: "9.9.3"
     replace: true
     set:
-      jdbc_url: "jdbc:mysql://{{ bundle.outputs.mysql_host }}:{{ bundle.outputs.mysql_port }}/{{ bundle.parameters.database_name }}"
+      jdbc_url: "jdbc:mysql://${ bundle.outputs.mysql_host }:${ bundle.outputs.mysql_port }/${ bundle.parameters.database_name }
 ```
 
-[mixin-architecture]: /mixin-dev-guide/architecture/
-[credentials]: /credentials/
-[parameters]: /parameters/
+[credentials]: /docs/introduction/concepts-and-components/intro-credentials/
+[parameters]: /docs/introduction/concepts-and-components/intro-parameters/

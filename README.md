@@ -1,6 +1,10 @@
 <img align="right" src="docs/static/images/porter-docs-header.svg" width="300px" />
 
-[![Build Status](https://dev.azure.com/getporter/porter/_apis/build/status/porter-canary?branchName=main)](https://dev.azure.com/getporter/porter/_build/latest?definitionId=26&branchName=main)
+[![CNCF Sandbox Project](docs/static/images/cncf-sandbox-badge.svg)](https://www.cncf.io/projects/porter/)
+[![porter](https://github.com/getporter/porter/actions/workflows/porter.yml/badge.svg?branch=main&event=push)](https://github.com/getporter/porter/actions/workflows/porter.yml)
+<a href="https://porter.sh/find-issue" alt="Find an issue to work on">
+<img src="https://img.shields.io/github/issues-search?label=%22help%20wanted%22%20issues&query=org%3Agetporter%20label%3A%22good%20first%20issue%22%2C%22help%20wanted%22%20no%3Aassignee" /></a>
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8720/badge)](https://www.bestpractices.dev/projects/8720)
 
 # Porter
 
@@ -57,7 +61,7 @@ Plugins let you store Porter's data and retrieve secrets from an external servic
 [Open an Issue]: https://github.com/getporter/porter/issues/new/choose
 [Forum]: https://porter.sh/forum/
 [Dev Meeting]: https://porter.sh/community/#dev-meeting
-[Porter Enhancement Proposals]: https://porter.sh/contribute/proposals/
+[Porter Enhancement Proposals]: https://porter.sh/docs/contribute/proposals/
 
 # Looking for Contributors
 
@@ -65,7 +69,7 @@ Want to work on Porter with us? 💖 We are actively seeking out new contributor
 with the hopes of building up both casual contributors and enticing some of you
 into becoming reviewers and maintainers.
 
-<p align="center">Start with our <a href="https://porter.sh/contribute/">New Contributors Guide</a>
+<p align="center">Start with our <a href="https://porter.sh/docs/contribute/">New Contributors Guide</a>
 
 Porter wouldn't be possible without our [contributors][contributors], carrying
 the load and making it better every day! 🙇‍♀️
@@ -91,9 +95,6 @@ currently working on and plan to work on over the next few months. We use the
 maintainer who will be working on them.
 
 <p align="center">Check out our <a href="https://porter.sh/roadmap">roadmap</a></p>
-
-Our [version strategy] explains how we version the project, when you should expect
-breaking changes in a release, and the process for the v1 release.
 
 [board]: https://porter.sh/board
 [version strategy]: https://porter.sh/project/version-strategy/

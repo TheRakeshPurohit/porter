@@ -15,7 +15,7 @@ Mixins are critical building blocks for bundles, and we hope the Docker mixin wi
 
 The Docker mixin abstracts this logic for you and allows you to specify the Docker commands with the arguments and flags that you want to execute directly in the Porter manifest. The commands currently provided by the Docker mixin are pull, push, run, build, login, and remove. To view all the syntax for the commands, take a look at the [README](https://github.com/deislabs/porter-docker).
 
-Let's go through an example bundle to try out the mixin. First, we will use the Docker mixin to pull and run [docker/whalesay](https://hub.docker.com/r/docker/whalesay/). Then, we will write our own Dockerfile, build it, and push it to Docker Hub.
+Let's go through an example bundle to try out the mixin. First, we will use the Docker mixin to pull and run [ghcr.io/getporter/examples/images/whalesay](https://github.com/orgs/getporter/packages/container/package/examples%2Fimages%2Fwhalesay). Then, we will write our own Dockerfile, build it, and push it to Docker Hub.
 
 ## Author the bundle
 Writing a bundle with the Docker mixin has a few steps:
@@ -56,19 +56,19 @@ mixins:
 
 ### Use Docker CLI
 
-Next, delete the install, upgrade, and uninstall actions. Now, to run docker/whalesay, copy and paste the code below into the porter.yaml to pull the image and then run it with a command to say "Hello World". 
+Next, delete the install, upgrade, and uninstall actions. Now, to run ghcr.io/getporter/examples/images/whalesay, copy and paste the code below into the porter.yaml to pull the image and then run it with a command to say "Hello World". 
 ```
 install:
 - docker:
     description: "Install Whalesay"
     pull:
-      name: docker/whalesay
+      name: ghcr.io/getporter/examples/images/whalesay
       tag: latest
 - docker:
     description: "Run Whalesay"
     run:
       name: dockermixin
-      image: "docker/whalesay:latest"
+      image: "ghcr.io/getporter/examples/images/whalesay:latest"
       command: cowsay
       arguments:
         - "Hello World"
@@ -106,7 +106,7 @@ Run Whalesay
 Now, we will go through an example of how you can incorporate and build your own Docker image and then push it to Docker hub. First, you will need to create a Dockerfile named Dockerfile-cookies next to your porter.yaml and copy paste the code below into the file.
 
 ```
-FROM debian:stretch-slim
+FROM debian:stable-slim
 
 CMD ["echo", "Everyone loves cookies"]
 ```
@@ -139,11 +139,33 @@ credentials:
   - name: DOCKER_PASSWORD
     env: DOCKER_PASSWORD
 ``` 
-Next, run the following line and select environment variable for where the credentials will come from.
+Next, run the following commands and edit the file with where the credentials will come from.
 ```console
-$ porter credentials generate docker
+$ porter credentials create docker.json
+$ cat docker.json
+# modify docker.json with your editor to the content below
+{
+    "schemaType": "CredentialSet",
+    "schemaVersion": "1.0.1",
+    "name": "docker",
+    "credentials": [
+        {
+            "name": "DOCKER_USERNAME",
+            "source": {
+                "env": "DOCKER_USERNAME"
+            }
+        },
+        {
+            "name": "DOCKER_PASSWORD",
+            "source": {
+                "env": "DOCKER_PASSWORD"
+            }
+        }
+    ]
+}
+$ porter credentials apply docker.json
 ```
-Your credentials are now set up. When you run install or upgrade or uninstall, you need to pass in your credentials using the `-c` or `--cred` flag. 
+Your credentials are now set up. When you run install or upgrade or uninstall, you need to pass in your credentials using the `-c` or `--credential-set` flag. 
 
 When you are ready to install your bundle, run the command below to identify the credentials and give access to the Docker daemon. 
 
@@ -154,7 +176,7 @@ After it runs, you should see output that the image was built and tagged success
 ```
 Build image
 Sending build context to Docker daemon  101.2MB
-Step 1/2 : FROM debian:stretch-slim
+Step 1/2 : FROM debian:stable-slim
  ---> 614bb74b620e
 Step 2/2 : CMD ["echo", "Everyone loves cookies"]
  ---> Using cache

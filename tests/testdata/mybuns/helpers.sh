@@ -2,17 +2,18 @@
 set -euo pipefail
 
 install() {
+  touch /cnab/app/outputs/tfstate
   if [[ "$LOG_LEVEL" == "11" ]]; then
-    echo Hello, $USERNAME
+    echo Hello, "$ROOT_USERNAME"!
   fi
 }
 
 makeMagic() {
-  echo $1 > /cnab/app/magic
+  echo "$1" > /cnab/app/magic.txt
 }
 
 ensureMagic() {
-  if ! test -f "/cnab/app/magic"; then
+  if ! test -f "magic.txt"; then
     echo "No magic detected"
     exit 1
   fi
@@ -28,6 +29,16 @@ uninstall() {
   if [[ "$LOG_LEVEL" == "11" ]]; then
     echo Goodbye World
   fi
+}
+
+chaos_monkey() {
+  if [[ "$1" == "true" ]]; then
+    echo "a chaos monkey appears. you have died"
+    exit 1
+  fi
+
+    echo "no chaos monkey appeared. you have lived"
+
 }
 
 # Call the requested function and pass the arguments as-is

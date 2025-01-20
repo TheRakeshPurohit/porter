@@ -37,7 +37,7 @@ required:
 Declaring this extension as required is a great way to let potential users of
 your bundle know that Docker access is necessary to install.
 
-See more information via the [Porter documentation](/author-bundles/#docker).
+See more information via the [Porter documentation](/docs/bundle/manifest/#docker).
 
 ## Mixin Declaration
 
@@ -87,7 +87,7 @@ You can specify either the tag or the digest.
 - docker:
     description: "Install Whalesay"
     pull:
-      name: docker/whalesay
+      name: ghcr.io/getporter/examples/images/whalesay
       tag: latest
 ````
 
@@ -183,7 +183,7 @@ You can specify either the tag or the digest.
     description: "Run Whalesay"
     run:
       name: mixinpractice
-      image: "docker/whalesay:latest"
+      image: "ghcr.io/getporter/examples/images/whalesay:latest"
       detach: true
       ports:
         - host: 8080
@@ -256,7 +256,7 @@ docker login and securely provide your username and password.
 
 ## Invocation
 
-Use of this mixin requires opting-in to Docker host access via a Porter setting.  See the Porter [documentation](https://porter.sh/configuration/#allow-docker-host-access) for further details.
+Use of this mixin requires opting-in to Docker host access via a Porter setting.  See the Porter [documentation](/docs/configuration/configuration/#allow-docker-host-access) for further details.
 
 Here we opt-in via the CLI flag, `--allow-docker-host-access`:
 ```shell

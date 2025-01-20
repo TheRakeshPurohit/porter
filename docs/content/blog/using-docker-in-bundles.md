@@ -19,7 +19,7 @@ application, or even more creative tasks that you have already
 containerized. Well now you can reuse all that hard work and logic from within
 your bundles!
 
-Let's walk through using my favorite container, [docker/whalesay][whalesay], in a bundle. 
+Let's walk through using my favorite container, [ghcr.io/getporter/examples/images/whalesay][whalesay], in a bundle. 
 
 ```
  _____________________
@@ -38,7 +38,7 @@ Let's walk through using my favorite container, [docker/whalesay][whalesay], in 
           \____\______/
 ```
 
-[whalesay]: https://hub.docker.com/r/docker/whalesay/
+[whalesay]: https://github.com/orgs/getporter/packages/container/package/examples%2Fimages%2Fwhalesay
 
 ## Author the bundle
 Writing a bundle that uses Docker has a few steps:
@@ -50,7 +50,7 @@ Writing a bundle that uses Docker has a few steps:
 Here's the [full working example whalesay bundle][whalesay-bundle] for you to
 follow along with.
 
-[whalesay-bundle]: /src/examples/docker/
+[whalesay-bundle]: /examples/src/docker/
 
 ### Require Docker
 
@@ -58,7 +58,7 @@ The user running the bundle, and Porter, needs to know that this bundle
 requires the local Docker daemon connected to the bundle. You need to a new
 section to porter.yaml for required extensions, and defined a new prototype
 extension that says that the bundle [requires access to a Docker
-daemon](https://porter.sh/author-bundles/#docker):
+daemon](/docs/bundle/manifest/#docker):
 
 ```yaml
 required:
@@ -96,7 +96,7 @@ install:
 
 This blog post focuses on just the docker mixin, but here is a [full
 working example for how to use Docker Compose in a
-bundle](/src/examples/compose/).
+bundle](/examples/src/dockerapp/).
 
 ### Use Docker
 
@@ -106,10 +106,10 @@ in my bundle:
 **porter.yaml**
 
 ```yaml
-name: whalesay
-version: 0.1.2
+name: examples/whalesay
+version: 0.2.0
 description: "An example bundle that uses docker through the magic of whalespeak"
-registry: getporter
+registry: ghcr.io/getporter
 
 required:
   - docker
@@ -128,7 +128,7 @@ mixins:
 install:
   - docker:
       run:
-        image: "docker/whalesay:latest"
+        image: "ghcr.io/getporter/examples/images/whalesay:latest"
         rm: true
         arguments:
           - cowsay
@@ -137,7 +137,7 @@ install:
 upgrade:
   - docker:
       run:
-        image: "docker/whalesay:latest"
+        image: "ghcr.io/getporter/examples/images/whalesay:latest"
         rm: true
         arguments:
           - cowsay
@@ -146,29 +146,29 @@ upgrade:
 say:
   - docker:
       run:
-        image: "docker/whalesay:latest"
+        image: "ghcr.io/getporter/examples/images/whalesay:latest"
         rm: true
         arguments:
           - cowsay
-          - - "{{ bundle.parameters.msg }}"
+          - - ${ bundle.parameters.msg }
 
 uninstall:
   - docker:
       run:
-        image: "docker/whalesay:latest"
+        image: "ghcr.io/getporter/examples/images/whalesay:latest"
         rm: true
         arguments:
           - cowsay
           - Goodbye World
 ```
 
-After I test the bundle and verify that it's ready for release, I use `porter publish` to push the new image `getporter/whalesay:v0.1.2` to the registry.
+After I test the bundle and verify that it's ready for release, I use `porter publish` to push the new image `ghcr.io/getporter/examples/whalesay:v0.2.0` to the registry.
 
 ## Run that bundle
 
 Now that the bundle is ready to use, the user running the bundle needs to
 give the bundle elevated permission with the [Allow Docker Host
-Access](https://porter.sh/configuration/#allow-docker-host-access) setting. This
+Access](/docs/configuration/configuration/#allow-docker-host-access) setting. This
 is because giving a container access to the host's Docker socket, or running a
 container with `--privileged`, has security implications for the underlying host,
 and should only be given to trusted containers, or in this case trusted bundles.
@@ -176,7 +176,7 @@ and should only be given to trusted containers, or in this case trusted bundles.
 Let the whales speak!
 
 ```console
-$ porter install --reference getporter/whalesay:v0.1.2 --allow-docker-host-access
+$ porter install --reference ghcr.io/getporter/examples/whalesay:v0.2.0 --allow-docker-host-access
 installing whalesay...
 executing install action from whalesay (bundle instance: whalesay)
 Install Hello World
@@ -234,6 +234,6 @@ us to take this further, please reach out on the [porter][porter-repo] or [docke
 repositories!
 
 [porter-repo]: https://github.com/getporter/porter/
-[docker-repo]: https://github.com/getporter/mixin-docker/
+[docker-repo]: https://github.com/getporter/docker-mixin
 [compose-spec]: https://www.compose-spec.io/
 [docker mixin]: /mixins/docker/
