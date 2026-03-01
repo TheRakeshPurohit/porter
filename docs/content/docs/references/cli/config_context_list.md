@@ -1,16 +1,30 @@
 ---
-title: "porter mixins feed"
-slug: porter_mixins_feed
-url: /cli/porter_mixins_feed/
+title: "porter config context list"
+slug: porter_config_context_list
+url: /cli/porter_config_context_list/
 ---
-## porter mixins feed
+## porter config context list
 
-Feed commands
+List configuration contexts
+
+### Synopsis
+
+List all contexts defined in the porter configuration file. The active context is marked with *.
+
+```
+porter config context list [flags]
+```
+
+### Examples
+
+```
+  porter config context list
+```
 
 ### Options
 
 ```
-  -h, --help   help for feed
+  -h, --help   help for list
 ```
 
 ### Options inherited from parent commands
@@ -23,7 +37,5 @@ Feed commands
 
 ### SEE ALSO
 
-* [porter mixins](/cli/porter_mixins/)	 - Mixin commands. Mixins assist with authoring bundles.
-* [porter mixins feed generate](/cli/porter_mixins_feed_generate/)	 - Generate an atom feed from the mixins in a directory
-* [porter mixins feed template](/cli/porter_mixins_feed_template/)	 - Create an atom feed template
+* [porter config context](/cli/porter_config_context/)	 - Context commands
 
